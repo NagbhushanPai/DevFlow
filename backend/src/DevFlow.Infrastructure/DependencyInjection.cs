@@ -36,13 +36,15 @@ public static class DependencyInjection
 
         services.Configure<JwtSettings>(
     configuration.GetSection(JwtSettings.SectionName));
+
+        services.AddScoped<IIdentityService, IdentityService>();
+
+
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         var jwtSettings = configuration
-    .GetSection(JwtSettings.SectionName)
-    .Get<JwtSettings>()
-    ?? throw new InvalidOperationException(
-        "JWT settings were not configured.");
+                .GetSection(JwtSettings.SectionName)
+                .Get<JwtSettings>()  ?? throw new InvalidOperationException("JWT settings were not configured.");
 
 services
     .AddAuthentication(options =>
