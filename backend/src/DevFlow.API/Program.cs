@@ -1,7 +1,15 @@
 using DevFlow.Infrastructure;
 using DevFlow.API.ExceptionHandling;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, configuration) =>
+{
+    configuration
+        .MinimumLevel.Information()
+        .WriteTo.Console();
+});
 
 builder.Services.AddControllers();
 
@@ -15,6 +23,8 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
+app.UseSerilogRequestLogging();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -26,5 +36,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.Run();
