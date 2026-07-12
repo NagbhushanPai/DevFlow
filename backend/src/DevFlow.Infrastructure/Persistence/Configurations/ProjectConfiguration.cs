@@ -30,25 +30,5 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 
         builder.HasIndex(project => project.Key)
             .IsUnique();
-
-        builder.HasMany(project => project.Members)
-            .WithOne(member => member.Project)
-            .HasForeignKey(member => member.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(project => project.Sprints)
-            .WithOne(sprint => sprint.Project)
-            .HasForeignKey(sprint => sprint.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(project => project.Issues)
-            .WithOne(issue => issue.Project)
-            .HasForeignKey(issue => issue.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(project => project.Labels)
-            .WithOne(label => label.Project)
-            .HasForeignKey(label => label.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }
