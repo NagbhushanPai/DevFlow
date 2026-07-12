@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\DevFlow.Application\DevFlow.Application.csproj" />
     <ProjectReference Include="..\DevFlow.Infrastructure\DevFlow.Infrastructure.csproj" />
   </ItemGroup>

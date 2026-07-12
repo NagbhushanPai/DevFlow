@@ -1,0 +1,16 @@
+D:\projects\DevFlow\backend\src\DevFlow.Application\bin\Debug\net10.0\DevFlow.Application.deps.json
+D:\projects\DevFlow\backend\src\DevFlow.Application\bin\Debug\net10.0\DevFlow.Application.dll
+D:\projects\DevFlow\backend\src\DevFlow.Application\bin\Debug\net10.0\DevFlow.Application.pdb
+D:\projects\DevFlow\backend\src\DevFlow.Application\bin\Debug\net10.0\DevFlow.Domain.dll
+D:\projects\DevFlow\backend\src\DevFlow.Application\bin\Debug\net10.0\DevFlow.Domain.pdb
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow.Application.csproj.AssemblyReference.cache
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow.Application.GeneratedMSBuildEditorConfig.editorconfig
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow.Application.AssemblyInfoInputs.cache
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow.Application.AssemblyInfo.cs
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow.Application.csproj.CoreCompileInputs.cache
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow.Application.sourcelink.json
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow..012101D4.Up2Date
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow.Application.dll
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\refint\DevFlow.Application.dll
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\DevFlow.Application.pdb
+D:\projects\DevFlow\backend\src\DevFlow.Application\obj\Debug\net10.0\ref\DevFlow.Application.dll

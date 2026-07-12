@@ -1,0 +1,73 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "DevFlow.API/1.0.0": {
+        "dependencies": {
+          "DevFlow.Application": "1.0.0",
+          "DevFlow.Infrastructure": "1.0.0"
+        },
+        "runtime": {
+          "DevFlow.API.dll": {}
+        }
+      },
+      "DevFlow.Application/1.0.0": {
+        "dependencies": {
+          "DevFlow.Domain": "1.0.0"
+        },
+        "runtime": {
+          "DevFlow.Application.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "DevFlow.Domain/1.0.0": {
+        "runtime": {
+          "DevFlow.Domain.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "DevFlow.Infrastructure/1.0.0": {
+        "dependencies": {
+          "DevFlow.Application": "1.0.0",
+          "DevFlow.Domain": "1.0.0"
+        },
+        "runtime": {
+          "DevFlow.Infrastructure.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "DevFlow.API/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "DevFlow.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "DevFlow.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "DevFlow.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
