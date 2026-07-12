@@ -2,6 +2,7 @@ using DevFlow.Application.Common.Exceptions;
 using DevFlow.Application.Common.Interfaces;
 using DevFlow.Application.Common.Models;
 using DevFlow.Application.Features.Authentication.Common;
+using DevFlow.Application.Common.Authorization;
 using MediatR;
 
 namespace DevFlow.Application.Features.Authentication.Commands.Register;
@@ -50,11 +51,17 @@ public sealed class RegisterCommandHandler
                 creationResult.Errors);
         }
 
+        await _identityService.AddToRoleAsync(
+            creationResult.UserId.Value,
+            Roles.Developer,
+            cancellationToken);
+
         var user = new UserInfo(
             creationResult.UserId.Value,
             request.FirstName,
             request.LastName,
-            request.Email);
+            request.Email,
+            [Roles.Developer]);
 
         var token = _jwtTokenGenerator.GenerateToken(user);
 
@@ -63,6 +70,7 @@ public sealed class RegisterCommandHandler
             user.FirstName,
             user.LastName,
             user.Email,
+            user.Roles,
             token.Token,
             token.ExpiresAtUtc);
     }

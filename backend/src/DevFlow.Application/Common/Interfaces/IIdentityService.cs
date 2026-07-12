@@ -23,4 +23,13 @@ public interface IIdentityService
         Guid userId,
         string password,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<string>> GetRolesAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    Task AddToRoleAsync(
+        Guid userId,
+        string role,
+        CancellationToken cancellationToken = default);
 }

@@ -24,22 +24,25 @@ public sealed class IdentityService : IIdentityService
     }
 
     public async Task<UserInfo?> GetUserByEmailAsync(
-        string email,
-        CancellationToken cancellationToken = default)
+    string email,
+    CancellationToken cancellationToken = default)
+{
+    var user = await _userManager.FindByEmailAsync(email);
+
+    if (user is null)
     {
-        var user = await _userManager.FindByEmailAsync(email);
-
-        if (user is null)
-        {
-            return null;
-        }
-
-        return new UserInfo(
-            user.Id,
-            user.FirstName,
-            user.LastName,
-            user.Email!);
+        return null;
     }
+
+    var roles = await _userManager.GetRolesAsync(user);
+
+    return new UserInfo(
+        user.Id,
+        user.FirstName,
+        user.LastName,
+        user.Email!,
+        roles.ToArray());
+}
 
     public async Task<UserCreationResult> CreateUserAsync(
         string firstName,
@@ -92,4 +95,46 @@ public sealed class IdentityService : IIdentityService
             user,
             password);
     }
+
+    public async Task<IReadOnlyCollection<string>> GetRolesAsync(
+    Guid userId,
+    CancellationToken cancellationToken = default)
+{
+    var user = await _userManager.FindByIdAsync(
+        userId.ToString());
+
+    if (user is null)
+    {
+        return Array.Empty<string>();
+    }
+
+    var roles = await _userManager.GetRolesAsync(user);
+
+    return roles.ToArray();
+}
+
+public async Task AddToRoleAsync(
+    Guid userId,
+    string role,
+    CancellationToken cancellationToken = default)
+{
+    var user = await _userManager.FindByIdAsync(
+        userId.ToString())
+        ?? throw new InvalidOperationException(
+            $"User '{userId}' was not found.");
+
+    var result = await _userManager.AddToRoleAsync(
+        user,
+        role);
+
+    if (!result.Succeeded)
+    {
+        var errors = string.Join(
+            ", ",
+            result.Errors.Select(error => error.Description));
+
+        throw new InvalidOperationException(
+            $"Failed to assign role '{role}': {errors}");
+    }
+}
 }

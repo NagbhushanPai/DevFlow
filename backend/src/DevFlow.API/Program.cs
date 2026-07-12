@@ -1,6 +1,7 @@
 using DevFlow.Infrastructure;
 using DevFlow.API.ExceptionHandling;
 using Serilog;
+using DevFlow.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +44,6 @@ app.MapControllers();
 
 app.MapHealthChecks("/health");
 
-
+await IdentitySeeder.SeedRolesAsync(app.Services);
 
 app.Run();

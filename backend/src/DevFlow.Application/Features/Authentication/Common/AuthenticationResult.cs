@@ -5,5 +5,6 @@ public sealed record AuthenticationResult(
     string FirstName,
     string LastName,
     string Email,
+    IReadOnlyCollection<string> Roles,
     string Token,
     DateTime ExpiresAtUtc);

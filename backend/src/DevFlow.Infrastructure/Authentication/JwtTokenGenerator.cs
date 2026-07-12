@@ -12,8 +12,7 @@ public sealed class JwtTokenGenerator : IJwtTokenGenerator
 {
     private readonly JwtSettings _jwtSettings;
 
-    public JwtTokenGenerator(
-        IOptions<JwtSettings> jwtOptions)
+    public JwtTokenGenerator(IOptions<JwtSettings> jwtOptions)
     {
         _jwtSettings = jwtOptions.Value;
     }
@@ -23,28 +22,32 @@ public sealed class JwtTokenGenerator : IJwtTokenGenerator
         var expiresAtUtc = DateTime.UtcNow.AddMinutes(
             _jwtSettings.ExpirationInMinutes);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(
+            new(
                 JwtRegisteredClaimNames.Sub,
                 user.Id.ToString()),
 
-            new Claim(
+            new(
                 JwtRegisteredClaimNames.Email,
                 user.Email),
 
-            new Claim(
+            new(
                 JwtRegisteredClaimNames.GivenName,
                 user.FirstName),
 
-            new Claim(
+            new(
                 JwtRegisteredClaimNames.FamilyName,
                 user.LastName),
 
-            new Claim(
+            new(
                 JwtRegisteredClaimNames.Jti,
                 Guid.NewGuid().ToString())
         };
+
+        claims.AddRange(
+            user.Roles.Select(
+                role => new Claim(ClaimTypes.Role, role)));
 
         var signingKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_jwtSettings.Secret));

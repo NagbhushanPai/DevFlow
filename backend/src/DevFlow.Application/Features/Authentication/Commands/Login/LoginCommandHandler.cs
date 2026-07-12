@@ -50,6 +50,7 @@ public sealed class LoginCommandHandler
             user.FirstName,
             user.LastName,
             user.Email,
+            user.Roles,
             token.Token,
             token.ExpiresAtUtc);
     }

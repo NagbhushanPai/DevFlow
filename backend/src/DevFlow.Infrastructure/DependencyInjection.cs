@@ -9,6 +9,7 @@ using System.Text;
 using DevFlow.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 namespace DevFlow.Infrastructure;
 
@@ -25,6 +26,10 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(connectionString));
+
+        services.AddHealthChecks()
+            .AddDbContextCheck<ApplicationDbContext>(
+                name: "database");
 
         services.AddScoped<IApplicationDbContext>(
             provider => provider.GetRequiredService<ApplicationDbContext>());
@@ -60,6 +65,7 @@ services
         options.TokenValidationParameters =
             new TokenValidationParameters
             {
+                
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidateLifetime = true,
@@ -70,7 +76,9 @@ services
 
                 IssuerSigningKey =
                     new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSettings.Secret))
+                        Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+
+                RoleClaimType = ClaimTypes.Role
             };
     });
 
