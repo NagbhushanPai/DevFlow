@@ -2,6 +2,7 @@ using DevFlow.Infrastructure;
 using DevFlow.API.ExceptionHandling;
 using Serilog;
 using DevFlow.Infrastructure.Identity;
+using DevFlow.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,7 @@ builder.Host.UseSerilog((context, configuration) =>
 
 builder.Services.AddControllers();
 
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddEndpointsApiExplorer();
