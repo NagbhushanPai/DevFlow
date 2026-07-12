@@ -101,3 +101,13 @@ D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\obj\Debug\net10.0\refint\Dev
 D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\obj\Debug\net10.0\DevFlow.UnitTests.pdb
 D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\obj\Debug\net10.0\DevFlow.UnitTests.genruntimeconfig.cache
 D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\obj\Debug\net10.0\ref\DevFlow.UnitTests.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.EntityFrameworkCore.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.EntityFrameworkCore.Abstractions.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.Extensions.Caching.Abstractions.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.Extensions.Caching.Memory.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.Extensions.DependencyInjection.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.Extensions.Logging.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.Extensions.Logging.Abstractions.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.Extensions.Options.dll
+D:\projects\DevFlow\backend\tests\DevFlow.UnitTests\bin\Debug\net10.0\Microsoft.Extensions.Primitives.dll

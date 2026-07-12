@@ -16,3 +16,5 @@ D:\projects\DevFlow\backend\src\DevFlow.Infrastructure\obj\Debug\net10.0\DevFlow
 D:\projects\DevFlow\backend\src\DevFlow.Infrastructure\obj\Debug\net10.0\refint\DevFlow.Infrastructure.dll
 D:\projects\DevFlow\backend\src\DevFlow.Infrastructure\obj\Debug\net10.0\DevFlow.Infrastructure.pdb
 D:\projects\DevFlow\backend\src\DevFlow.Infrastructure\obj\Debug\net10.0\ref\DevFlow.Infrastructure.dll
+D:\projects\DevFlow\backend\src\DevFlow.Infrastructure\bin\Debug\net10.0\DevFlow.Infrastructure.runtimeconfig.json
+D:\projects\DevFlow\backend\src\DevFlow.Infrastructure\obj\Debug\net10.0\DevFlow.Infrastructure.genruntimeconfig.cache
