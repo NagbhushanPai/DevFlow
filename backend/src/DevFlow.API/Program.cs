@@ -3,6 +3,7 @@ using DevFlow.API.ExceptionHandling;
 using Serilog;
 using DevFlow.Infrastructure.Identity;
 using DevFlow.Application;
+using DevFlow.API.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,8 +19,7 @@ builder.Services.AddControllers();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerDocumentation();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
