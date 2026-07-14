@@ -1,6 +1,6 @@
-using DevFlow.Application.Features.Authentication.Commands.Login;
-using DevFlow.Application.Features.Authentication.Commands.Register;
-using DevFlow.Application.Features.Authentication.Common;
+using DevFlow.Application.Authentication.Commands.Login;
+using DevFlow.Application.Authentication.Commands.Register;
+using DevFlow.Application.Authentication.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

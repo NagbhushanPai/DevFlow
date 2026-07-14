@@ -1,6 +1,6 @@
 using DevFlow.Application.Common.Interfaces;
 using DevFlow.Application.Common.Models;
-using DevFlow.Application.Features.Authentication.Commands.Register;
+using DevFlow.Application.Authentication.Commands.Register;
 using Moq;
 
 namespace DevFlow.UnitTests.Application.Authentication;
