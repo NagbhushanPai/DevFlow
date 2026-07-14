@@ -47,40 +47,46 @@ public static class DependencyInjection
 
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
-        var jwtSettings = configuration
-                .GetSection(JwtSettings.SectionName)
-                .Get<JwtSettings>()  ?? throw new InvalidOperationException("JWT settings were not configured.");
-
-services
-    .AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme =
-            JwtBearerDefaults.AuthenticationScheme;
-
-        options.DefaultChallengeScheme =
-            JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters =
-            new TokenValidationParameters
+        services
+            .AddAuthentication(options =>
             {
-                
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
+                options.DefaultAuthenticateScheme =
+                    JwtBearerDefaults.AuthenticationScheme;
 
-                ValidIssuer = jwtSettings.Issuer,
-                ValidAudience = jwtSettings.Audience,
+                options.DefaultChallengeScheme =
+                    JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                var jwtSettings = configuration
+                    .GetRequiredSection(JwtSettings.SectionName)
+                    .Get<JwtSettings>()
+                    ?? throw new InvalidOperationException("JWT settings were not configured.");
 
-                IssuerSigningKey =
-                    new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+                if (string.IsNullOrWhiteSpace(jwtSettings.Secret))
+                {
+                    throw new InvalidOperationException(
+                        "JWT secret was not configured.");
+                }
 
-                RoleClaimType = ClaimTypes.Role
-            };
-    });
+                options.TokenValidationParameters =
+                    new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+
+                        ValidIssuer = jwtSettings.Issuer,
+                        ValidAudience = jwtSettings.Audience,
+
+                        IssuerSigningKey =
+                            new SymmetricSecurityKey(
+                                Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+
+                        RoleClaimType = ClaimTypes.Role
+                    };
+            });
 
     services.AddAuthorization();
 

@@ -49,3 +49,5 @@ app.MapHealthChecks("/health");
 await IdentitySeeder.SeedRolesAsync(app.Services);
 
 app.Run();
+
+public partial class Program;
