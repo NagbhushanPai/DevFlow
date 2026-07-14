@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 
+
 namespace DevFlow.Infrastructure;
 
 public static class DependencyInjection
@@ -89,6 +90,10 @@ public static class DependencyInjection
             });
 
         services.AddAuthorization();
+
+        services.AddHttpContextAccessor();
+
+    services.AddScoped<ICurrentUserService,CurrentUserService>();
 
         return services;
     }
