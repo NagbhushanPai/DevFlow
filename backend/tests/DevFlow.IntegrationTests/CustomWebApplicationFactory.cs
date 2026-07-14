@@ -13,6 +13,9 @@ namespace DevFlow.IntegrationTests;
 public sealed class CustomWebApplicationFactory
     : WebApplicationFactory<Program>
 {
+    private readonly string _databaseName =
+        $"DevFlowTests-{Guid.NewGuid()}";
+
     protected override void ConfigureWebHost(
         IWebHostBuilder builder)
     {
@@ -53,7 +56,7 @@ public sealed class CustomWebApplicationFactory
                 options =>
                 {
                     options.UseInMemoryDatabase(
-                        $"DevFlowTests-{Guid.NewGuid()}");
+                        _databaseName);
                 });
         });
     }
