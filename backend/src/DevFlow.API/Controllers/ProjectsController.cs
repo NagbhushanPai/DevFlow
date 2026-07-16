@@ -2,6 +2,9 @@ using DevFlow.Application.Projects.Commands.CreateProject;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using DevFlow.Application.Projects.DTOs;
+using DevFlow.Application.Projects.Queries.GetProjects;
+
 namespace DevFlow.API.Controllers;
 
 [Route("api/projects")]
@@ -20,5 +23,16 @@ public sealed class ProjectsController : BaseApiController
         return StatusCode(
             StatusCodes.Status201Created,
             projectId);
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<ProjectSummaryDto>>> GetProjects(
+        CancellationToken cancellationToken)
+    {
+        var projects = await Sender.Send(
+            new GetProjectsQuery(),
+            cancellationToken);
+
+        return Ok(projects);
     }
 }
