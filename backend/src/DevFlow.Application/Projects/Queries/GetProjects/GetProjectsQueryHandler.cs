@@ -2,6 +2,7 @@ using DevFlow.Application.Common.Interfaces;
 using DevFlow.Application.Projects.DTOs;
 using Microsoft.EntityFrameworkCore;
 using MediatR;
+using Mapster;
 
 namespace DevFlow.Application.Projects.Queries.GetProjects;
 
@@ -28,14 +29,7 @@ public sealed class GetProjectsQueryHandler
 
         return await _context.ProjectMembers
             .Where(pm => pm.UserId == userId)
-            .Select(pm => pm.Project)
-            .OrderBy(p => p.Name)
-            .Select(p => new ProjectSummaryDto(
-                p.Id,
-                p.Name,
-                p.Key,
-                p.Description,
-                p.CreatedAtUtc))
+            .Select(p => p.Adapt<ProjectSummaryDto>())
             .ToListAsync(cancellationToken);
     }
 }

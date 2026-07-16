@@ -2,6 +2,7 @@ using DevFlow.Application.Common.Behaviors;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using DevFlow.Application.Common.Mappings;
 
 namespace DevFlow.Application;
 
@@ -17,6 +18,8 @@ public static class DependencyInjection
         services.AddTransient(
             typeof(IPipelineBehavior<,>),
             typeof(ValidationBehavior<,>));
+
+        MappingConfig.RegisterMappings();
 
         return services;
     }
