@@ -41,6 +41,15 @@ public class ApplicationDbContext
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    // Organization and Team entities
+    public DbSet<Organization> Organizations => Set<Organization>();
+
+    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
+
+    public DbSet<Team> Teams => Set<Team>();
+
+    public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

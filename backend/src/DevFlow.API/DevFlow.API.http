@@ -1,4 +1,4 @@
-@DevFlow.API_HostAddress = http://localhost:5258
+@DevFlow.API_HostAddress = http://localhost:8080
 
 GET {{DevFlow.API_HostAddress}}/weatherforecast/
 Accept: application/json

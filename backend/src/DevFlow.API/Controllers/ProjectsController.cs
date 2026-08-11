@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using DevFlow.Application.Projects.DTOs;
 using DevFlow.Application.Projects.Queries.GetProjects;
+using DevFlow.Application.Projects.Queries.GetProjectById;
 
 namespace DevFlow.API.Controllers;
 
@@ -35,4 +36,17 @@ public sealed class ProjectsController : BaseApiController
 
         return Ok(projects);
     }
+
+
+    [HttpGet("{id:guid}")]
+public async Task<ActionResult<ProjectDto>> GetProjectById(
+    Guid id,
+    CancellationToken cancellationToken)
+{
+    var project = await Sender.Send(
+        new GetProjectByIdQuery(id),
+        cancellationToken);
+
+    return Ok(project);
+}
 }

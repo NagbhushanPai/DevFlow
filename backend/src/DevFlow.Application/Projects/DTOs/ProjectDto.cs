@@ -1,3 +1,5 @@
+using DevFlow.Domain.Enums;
+
 namespace DevFlow.Application.Projects.DTOs;
 
 public sealed record ProjectDto(
@@ -5,7 +7,8 @@ public sealed record ProjectDto(
     string Name,
     string Key,
     string? Description,
-    bool IsArchived,
-    DateTime CreatedAt,
-    DateTime? UpdatedAt
+    ProjectStatus Status,
+    Guid OwnerId,
+    DateTime CreatedAtUtc,
+    DateTime? UpdatedAtUtc
 );
