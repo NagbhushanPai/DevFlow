@@ -14,4 +14,6 @@ public class Organization : BaseEntity
     public ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
 
     public ICollection<Team> Teams { get; set; } = new List<Team>();
+
+    public ICollection<Project> Projects { get; set; } = new List<Project>();
 }

@@ -4,6 +4,7 @@ namespace DevFlow.Application.Projects.DTOs;
 
 public sealed record ProjectDto(
     Guid Id,
+    Guid OrganizationId,
     string Name,
     string Key,
     string? Description,

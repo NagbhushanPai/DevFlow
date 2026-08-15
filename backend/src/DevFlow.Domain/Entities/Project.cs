@@ -5,6 +5,9 @@ namespace DevFlow.Domain.Entities;
 
 public class Project : BaseEntity
 {
+    public Guid OrganizationId { get; set; }
+
+    public Organization Organization { get; set; } = null!;
     public string Name { get; set; } = string.Empty;
 
     public string Key { get; set; } = string.Empty;
@@ -17,6 +20,9 @@ public class Project : BaseEntity
 
     public ICollection<ProjectMember> Members { get; set; }
         = new List<ProjectMember>();
+
+    public ICollection<ProjectTeam> ProjectTeams { get; set; }
+        = new List<ProjectTeam>();
 
     public ICollection<Sprint> Sprints { get; set; }
         = new List<Sprint>();

@@ -21,6 +21,8 @@ public class ApplicationDbContext
 
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 
+    public DbSet<ProjectTeam> ProjectTeams => Set<ProjectTeam>();
+
     public DbSet<Sprint> Sprints => Set<Sprint>();
 
     public DbSet<Issue> Issues => Set<Issue>();

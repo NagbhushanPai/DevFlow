@@ -47,13 +47,13 @@
 
 ## Phase 6 — Project Management
 
-- [ ] Project CRUD
+- [x] Project CRUD
 - [x] Project membership
-- [ ] Team assignment
-- [ ] Search
-- [ ] Filtering
-- [ ] Sorting
-- [ ] Pagination
+- [x] Team assignment
+- [x] Search
+- [x] Filtering
+- [x] Sorting
+- [x] Pagination
 
 ## Phase 7 — Issue Management
 

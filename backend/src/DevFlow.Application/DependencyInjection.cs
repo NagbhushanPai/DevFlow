@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using DevFlow.Application.Common.Mappings;
 using DevFlow.Application.Common.Authorization;
 using DevFlow.Application.Organizations;
+using DevFlow.Application.Projects;
 
 namespace DevFlow.Application;
 
@@ -25,6 +26,7 @@ public static class DependencyInjection
 
         services.AddScoped<IOrganizationAuthorizationService, OrganizationAuthorizationService>();
         services.AddScoped<IOrganizationManagementService, OrganizationManagementService>();
+        services.AddScoped<IProjectManagementService, ProjectManagementService>();
 
         return services;
     }

@@ -1,6 +1,7 @@
 using DevFlow.Application.Common.Interfaces;
 using DevFlow.Domain.Entities;
 using DevFlow.Domain.Enums;
+using DevFlow.Application.Common.Authorization;
 using MediatR;
 
 namespace DevFlow.Application.Projects.Commands.CreateProject;
@@ -10,13 +11,16 @@ public sealed class CreateProjectCommandHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IOrganizationAuthorizationService _organizationAuthorizationService;
 
     public CreateProjectCommandHandler(
         IApplicationDbContext context,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IOrganizationAuthorizationService organizationAuthorizationService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _organizationAuthorizationService = organizationAuthorizationService;
     }
 
     public async Task<Guid> Handle(
@@ -26,8 +30,12 @@ public sealed class CreateProjectCommandHandler
         var userId = _currentUserService.UserId
             ?? throw new UnauthorizedAccessException();
 
+        await _organizationAuthorizationService.RequireManagerAsync(
+            request.OrganizationId, userId, cancellationToken);
+
         var project = new Project
         {
+            OrganizationId = request.OrganizationId,
             Name = request.Name.Trim(),
             Key = request.Key.Trim().ToUpperInvariant(),
             Description = request.Description?.Trim(),

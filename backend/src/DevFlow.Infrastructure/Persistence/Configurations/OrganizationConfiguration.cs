@@ -24,6 +24,11 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
             .HasForeignKey(t => t.OrganizationId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(o => o.Projects)
+            .WithOne(p => p.Organization)
+            .HasForeignKey(p => p.OrganizationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(o => o.Name);
     }
 }

@@ -30,5 +30,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 
         builder.HasIndex(project => project.Key)
             .IsUnique();
+
+        builder.HasIndex(project => new { project.OrganizationId, project.Name });
     }
 }

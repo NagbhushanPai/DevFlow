@@ -7,6 +7,7 @@ public sealed class CreateProjectCommandValidator
 {
     public CreateProjectCommandValidator()
     {
+        RuleFor(x => x.OrganizationId).NotEmpty();
         RuleFor(x => x.Name)
             .NotEmpty()
             .MaximumLength(200);

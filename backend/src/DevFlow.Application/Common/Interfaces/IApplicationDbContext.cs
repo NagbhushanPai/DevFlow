@@ -17,6 +17,8 @@ public interface IApplicationDbContext
 
     DbSet<ProjectMember> ProjectMembers { get; }
 
+    DbSet<ProjectTeam> ProjectTeams { get; }
+
     DbSet<Sprint> Sprints { get; }
 
     DbSet<Issue> Issues { get; }
