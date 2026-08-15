@@ -25,6 +25,9 @@ public class Issue : BaseEntity
 
     public Guid? AssigneeId { get; set; }
 
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+
     public Project Project { get; set; } = null!;
 
     public Sprint? Sprint { get; set; }

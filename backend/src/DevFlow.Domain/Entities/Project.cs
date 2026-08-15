@@ -18,6 +18,8 @@ public class Project : BaseEntity
 
     public Guid OwnerId { get; set; }
 
+    public int NextIssueNumber { get; set; } = 1;
+
     public ICollection<ProjectMember> Members { get; set; }
         = new List<ProjectMember>();
 

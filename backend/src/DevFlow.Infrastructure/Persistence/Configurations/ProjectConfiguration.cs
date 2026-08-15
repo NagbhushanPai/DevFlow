@@ -32,5 +32,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .IsUnique();
 
         builder.HasIndex(project => new { project.OrganizationId, project.Name });
+
+        builder.Property(project => project.NextIssueNumber).IsRequired();
     }
 }

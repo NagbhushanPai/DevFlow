@@ -10,5 +10,8 @@ public class Comment : BaseEntity
 
     public Guid AuthorId { get; set; }
 
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+
     public Issue Issue { get; set; } = null!;
 }
