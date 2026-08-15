@@ -5,6 +5,14 @@ namespace DevFlow.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
+    DbSet<Organization> Organizations { get; }
+
+    DbSet<OrganizationMember> OrganizationMembers { get; }
+
+    DbSet<Team> Teams { get; }
+
+    DbSet<TeamMember> TeamMembers { get; }
+
     DbSet<Project> Projects { get; }
 
     DbSet<ProjectMember> ProjectMembers { get; }

@@ -3,6 +3,8 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using DevFlow.Application.Common.Mappings;
+using DevFlow.Application.Common.Authorization;
+using DevFlow.Application.Organizations;
 
 namespace DevFlow.Application;
 
@@ -20,6 +22,9 @@ public static class DependencyInjection
             typeof(ValidationBehavior<,>));
 
         MappingConfig.RegisterMappings();
+
+        services.AddScoped<IOrganizationAuthorizationService, OrganizationAuthorizationService>();
+        services.AddScoped<IOrganizationManagementService, OrganizationManagementService>();
 
         return services;
     }

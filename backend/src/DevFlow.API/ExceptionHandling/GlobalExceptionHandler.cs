@@ -37,6 +37,30 @@ public sealed class GlobalExceptionHandler(
                     Detail = exception.Message
                 },
 
+            ForbiddenAccessException =>
+                new ProblemDetails
+                {
+                    Status = StatusCodes.Status403Forbidden,
+                    Title = "Forbidden",
+                    Detail = exception.Message
+                },
+
+            NotFoundException =>
+                new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "Not found",
+                    Detail = exception.Message
+                },
+
+            ArgumentException =>
+                new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Invalid request",
+                    Detail = exception.Message
+                },
+
             _ =>
                 new ProblemDetails
                 {
