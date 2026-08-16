@@ -140,3 +140,5 @@ docker-compose.override.yml
 # =========================
 
 Generated/
+
+reasoning.md
