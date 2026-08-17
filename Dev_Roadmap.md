@@ -83,13 +83,15 @@
 
 ## Phase 9 — Core Angular UI
 
-- [ ] Dashboard
-- [ ] Organizations
-- [ ] Teams
-- [ ] Projects
-- [ ] Issues
-- [ ] Comments
-- [ ] Activity history
+- **Status: Complete.**
+
+- [x] Dashboard
+- [x] Organizations
+- [x] Teams
+- [x] Projects
+- [x] Issues
+- [x] Comments
+- [x] Activity history
 
 ## Phase 10 — Kanban Board
 
