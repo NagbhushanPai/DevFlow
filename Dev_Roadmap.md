@@ -95,11 +95,13 @@
 
 ## Phase 10 — Kanban Board
 
-- [ ] Kanban columns
-- [ ] Issue cards
-- [ ] Drag and drop
-- [ ] Status updates
-- [ ] Filters
+- **Status: Complete.**
+
+- [x] Kanban columns
+- [x] Issue cards
+- [x] Drag and drop
+- [x] Status updates
+- [x] Filters
 
 ## Phase 11 — Sprint Management
 
