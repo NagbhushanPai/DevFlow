@@ -105,11 +105,13 @@
 
 ## Phase 11 — Sprint Management
 
-- [ ] Sprint CRUD
-- [ ] Sprint backlog
-- [ ] Start sprint
-- [ ] Complete sprint
-- [ ] Sprint history
+- **Status: Complete.**
+
+- [x] Sprint CRUD
+- [x] Sprint backlog
+- [x] Start sprint
+- [x] Complete sprint
+- [x] Sprint history
 
 ## Phase 12 — Real-Time Features
 
