@@ -7,6 +7,7 @@ using DevFlow.Application.Common.Authorization;
 using DevFlow.Application.Organizations;
 using DevFlow.Application.Projects;
 using DevFlow.Application.Issues;
+using DevFlow.Application.Notifications;
 using DevFlow.Application.Sprints;
 
 namespace DevFlow.Application;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IProjectManagementService, ProjectManagementService>();
         services.AddScoped<IIssueManagementService, IssueManagementService>();
         services.AddScoped<ISprintManagementService, SprintManagementService>();
+        services.AddScoped<INotificationManagementService, NotificationManagementService>();
 
         return services;
     }

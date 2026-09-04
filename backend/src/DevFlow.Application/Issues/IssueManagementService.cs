@@ -1,5 +1,6 @@
 using DevFlow.Application.Common.Exceptions;
 using DevFlow.Application.Common.Interfaces;
+using DevFlow.Application.Notifications;
 using DevFlow.Domain.Entities;
 using DevFlow.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ public interface IIssueManagementService
     Task<IReadOnlyList<HistoryDto>> GetHistoryAsync(Guid issueId, CancellationToken ct);
 }
 
-public sealed class IssueManagementService(IApplicationDbContext context, ICurrentUserService currentUser) : IIssueManagementService
+public sealed class IssueManagementService(IApplicationDbContext context, ICurrentUserService currentUser, IRealtimeNotifier notifier) : IIssueManagementService
 {
     public async Task<IssuePage> GetIssuesAsync(Guid projectId, string? search, IssueStatus? status, IssuePriority? priority, Guid? assigneeId, string? sortBy, bool descending, int page, int pageSize, CancellationToken ct)
     {
@@ -46,7 +47,11 @@ public sealed class IssueManagementService(IApplicationDbContext context, ICurre
         await RequireProjectAccessAsync(projectId, ct); var project = await context.Projects.SingleOrDefaultAsync(p => p.Id == projectId, ct) ?? throw new NotFoundException("Project was not found.");
         if (assigneeId.HasValue && !await context.ProjectMembers.AnyAsync(m => m.ProjectId == projectId && m.UserId == assigneeId.Value, ct)) throw new ArgumentException("The assignee must be a project member.");
         var issue = new Issue { ProjectId = projectId, IssueNumber = project.NextIssueNumber++, Title = Required(title), Description = Optional(description), Type = type, Status = IssueStatus.Backlog, Priority = priority, ReporterId = UserId, AssigneeId = assigneeId, CreatedAtUtc = DateTime.UtcNow };
-        context.Issues.Add(issue); await context.SaveChangesAsync(ct); return ToDto(issue);
+        context.Issues.Add(issue); await context.SaveChangesAsync(ct);
+        var dto = ToDto(issue);
+        await notifier.IssueCreatedAsync(projectId, dto, ct);
+        if (assigneeId.HasValue && assigneeId.Value != UserId) await NotifyAssigneeAsync(assigneeId.Value, issue, ct);
+        return dto;
     }
 
     public async Task UpdateIssueAsync(Guid issueId, string title, string? description, IssueType type, IssueStatus status, IssuePriority priority, Guid? assigneeId, CancellationToken ct)
@@ -54,20 +59,41 @@ public sealed class IssueManagementService(IApplicationDbContext context, ICurre
         var issue = await FindAsync(issueId, ct); await RequireProjectAccessAsync(issue.ProjectId, ct);
         if (assigneeId.HasValue && !await context.ProjectMembers.AnyAsync(m => m.ProjectId == issue.ProjectId && m.UserId == assigneeId.Value, ct)) throw new ArgumentException("The assignee must be a project member.");
         AddHistory(issue, "Title", issue.Title, Required(title)); AddHistory(issue, "Description", issue.Description, Optional(description)); AddHistory(issue, "Type", issue.Type.ToString(), type.ToString()); AddHistory(issue, "Status", issue.Status.ToString(), status.ToString()); AddHistory(issue, "Priority", issue.Priority.ToString(), priority.ToString()); AddHistory(issue, "AssigneeId", issue.AssigneeId?.ToString(), assigneeId?.ToString());
+        var previousAssigneeId = issue.AssigneeId;
         issue.Title = Required(title); issue.Description = Optional(description); issue.Type = type; issue.Status = status; issue.Priority = priority; issue.AssigneeId = assigneeId; issue.UpdatedAtUtc = DateTime.UtcNow; await context.SaveChangesAsync(ct);
+        await notifier.IssueUpdatedAsync(issue.ProjectId, ToDto(issue), ct);
+        if (assigneeId.HasValue && assigneeId.Value != previousAssigneeId && assigneeId.Value != UserId) await NotifyAssigneeAsync(assigneeId.Value, issue, ct);
     }
 
-    public async Task DeleteIssueAsync(Guid issueId, CancellationToken ct) { var issue = await FindAsync(issueId, ct); await RequireProjectAccessAsync(issue.ProjectId, ct); issue.IsDeleted = true; issue.DeletedAtUtc = DateTime.UtcNow; issue.UpdatedAtUtc = DateTime.UtcNow; await context.SaveChangesAsync(ct); }
+    public async Task DeleteIssueAsync(Guid issueId, CancellationToken ct) { var issue = await FindAsync(issueId, ct); await RequireProjectAccessAsync(issue.ProjectId, ct); issue.IsDeleted = true; issue.DeletedAtUtc = DateTime.UtcNow; issue.UpdatedAtUtc = DateTime.UtcNow; await context.SaveChangesAsync(ct); await notifier.IssueDeletedAsync(issue.ProjectId, issue.Id, ct); }
     public async Task<IReadOnlyList<CommentDto>> GetCommentsAsync(Guid issueId, CancellationToken ct) { await AccessIssueAsync(issueId, ct); return await context.Comments.Where(c => c.IssueId == issueId && !c.IsDeleted).OrderBy(c => c.CreatedAtUtc).Select(c => new CommentDto(c.Id, c.IssueId, c.AuthorId, c.Content, c.CreatedAtUtc, c.UpdatedAtUtc)).ToListAsync(ct); }
-    public async Task<CommentDto> AddCommentAsync(Guid issueId, string content, CancellationToken ct) { await AccessIssueAsync(issueId, ct); var comment = new Comment { IssueId = issueId, AuthorId = UserId, Content = Required(content), CreatedAtUtc = DateTime.UtcNow }; context.Comments.Add(comment); await context.SaveChangesAsync(ct); return new CommentDto(comment.Id, issueId, comment.AuthorId, comment.Content, comment.CreatedAtUtc, comment.UpdatedAtUtc); }
-    public async Task DeleteCommentAsync(Guid commentId, CancellationToken ct) { var comment = await context.Comments.SingleOrDefaultAsync(c => c.Id == commentId && !c.IsDeleted, ct) ?? throw new NotFoundException("Comment was not found."); await AccessIssueAsync(comment.IssueId, ct); if (comment.AuthorId != UserId) throw new ForbiddenAccessException("Only the comment author can delete it."); comment.IsDeleted = true; comment.DeletedAtUtc = DateTime.UtcNow; await context.SaveChangesAsync(ct); }
+    public async Task<CommentDto> AddCommentAsync(Guid issueId, string content, CancellationToken ct)
+    {
+        var issue = await FindAsync(issueId, ct); await RequireProjectAccessAsync(issue.ProjectId, ct);
+        var comment = new Comment { IssueId = issueId, AuthorId = UserId, Content = Required(content), CreatedAtUtc = DateTime.UtcNow };
+        context.Comments.Add(comment); await context.SaveChangesAsync(ct);
+        var dto = new CommentDto(comment.Id, issueId, comment.AuthorId, comment.Content, comment.CreatedAtUtc, comment.UpdatedAtUtc);
+        await notifier.CommentAddedAsync(issue.ProjectId, dto, ct);
+        var recipients = new[] { issue.ReporterId, issue.AssigneeId }.Where(id => id.HasValue && id.Value != UserId).Select(id => id!.Value).Distinct();
+        foreach (var recipientId in recipients) await NotifyAsync(recipientId, "New comment", $"New comment on issue #{issue.IssueNumber}: {issue.Title}", ct);
+        return dto;
+    }
+    public async Task DeleteCommentAsync(Guid commentId, CancellationToken ct) { var comment = await context.Comments.SingleOrDefaultAsync(c => c.Id == commentId && !c.IsDeleted, ct) ?? throw new NotFoundException("Comment was not found."); var issue = await AccessIssueAsync(comment.IssueId, ct); if (comment.AuthorId != UserId) throw new ForbiddenAccessException("Only the comment author can delete it."); comment.IsDeleted = true; comment.DeletedAtUtc = DateTime.UtcNow; await context.SaveChangesAsync(ct); await notifier.CommentDeletedAsync(issue.ProjectId, issue.Id, commentId, ct); }
     public async Task<IReadOnlyList<HistoryDto>> GetHistoryAsync(Guid issueId, CancellationToken ct) { await AccessIssueAsync(issueId, ct); return await context.IssueHistories.Where(h => h.IssueId == issueId).OrderByDescending(h => h.CreatedAtUtc).Select(h => new HistoryDto(h.Id, h.IssueId, h.FieldName, h.OldValue, h.NewValue, h.ChangedById, h.CreatedAtUtc)).ToListAsync(ct); }
 
     private Guid UserId => currentUser.UserId ?? throw new UnauthorizedAccessException();
     private async Task<Issue> FindAsync(Guid id, CancellationToken ct) => await context.Issues.SingleOrDefaultAsync(i => i.Id == id && !i.IsDeleted, ct) ?? throw new NotFoundException("Issue was not found.");
-    private async Task AccessIssueAsync(Guid id, CancellationToken ct) { var issue = await FindAsync(id, ct); await RequireProjectAccessAsync(issue.ProjectId, ct); }
+    private async Task<Issue> AccessIssueAsync(Guid id, CancellationToken ct) { var issue = await FindAsync(id, ct); await RequireProjectAccessAsync(issue.ProjectId, ct); return issue; }
     private async Task RequireProjectAccessAsync(Guid projectId, CancellationToken ct) { if (!await context.ProjectMembers.AnyAsync(m => m.ProjectId == projectId && m.UserId == UserId, ct)) throw new ForbiddenAccessException("Project membership is required."); }
     private void AddHistory(Issue issue, string field, string? oldValue, string? newValue) { if (oldValue != newValue) context.IssueHistories.Add(new IssueHistory { IssueId = issue.Id, FieldName = field, OldValue = oldValue, NewValue = newValue, ChangedById = UserId, CreatedAtUtc = DateTime.UtcNow }); }
+    private Task NotifyAssigneeAsync(Guid assigneeId, Issue issue, CancellationToken ct) => NotifyAsync(assigneeId, "Issue assigned to you", $"You were assigned to issue #{issue.IssueNumber}: {issue.Title}", ct);
+    private async Task NotifyAsync(Guid userId, string title, string message, CancellationToken ct)
+    {
+        var notification = new Notification { UserId = userId, Title = title, Message = message, CreatedAtUtc = DateTime.UtcNow };
+        context.Notifications.Add(notification);
+        await context.SaveChangesAsync(ct);
+        await notifier.NotificationCreatedAsync(userId, new NotificationDto(notification.Id, notification.Title, notification.Message, notification.IsRead, notification.CreatedAtUtc), ct);
+    }
     private static IssueDto ToDto(Issue i) => new(i.Id, i.ProjectId, i.IssueNumber, i.Title, i.Description, i.Type, i.Status, i.Priority, i.ReporterId, i.AssigneeId, i.CreatedAtUtc, i.UpdatedAtUtc);
     private static string Required(string value) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("A value is required.") : value.Trim();
     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

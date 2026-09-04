@@ -115,10 +115,12 @@
 
 ## Phase 12 — Real-Time Features
 
-- [ ] Configure SignalR
-- [ ] Real-time issue updates
-- [ ] Real-time comments
-- [ ] Notifications
+- **Status: Complete.**
+
+- [x] Configure SignalR
+- [x] Real-time issue updates
+- [x] Real-time comments
+- [x] Notifications
 
 ## Phase 13 — Integrations
 
