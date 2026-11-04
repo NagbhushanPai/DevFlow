@@ -1,4 +1,5 @@
 using DevFlow.Infrastructure.Persistence;
+using DevFlow.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -58,6 +59,11 @@ public sealed class CustomWebApplicationFactory
                     options.UseInMemoryDatabase(
                         _databaseName);
                 });
+
+            services.RemoveAll<IFileStorageService>();
+            services.AddSingleton<IFileStorageService, FakeFileStorageService>();
+            services.RemoveAll<IGitHubIntegrationService>();
+            services.AddSingleton<IGitHubIntegrationService, FakeGitHubIntegrationService>();
         });
     }
 }
