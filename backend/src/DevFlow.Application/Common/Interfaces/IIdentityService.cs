@@ -12,6 +12,10 @@ public interface IIdentityService
         string email,
         CancellationToken cancellationToken = default);
 
+    Task<UserInfo?> GetUserByIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
     Task<UserCreationResult> CreateUserAsync(
         string firstName,
         string lastName,

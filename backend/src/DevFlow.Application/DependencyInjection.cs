@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IIssueManagementService, IssueManagementService>();
         services.AddScoped<ISprintManagementService, SprintManagementService>();
         services.AddScoped<INotificationManagementService, NotificationManagementService>();
+        services.AddScoped<IAttachmentManagementService, AttachmentManagementService>();
 
         return services;
     }

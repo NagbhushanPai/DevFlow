@@ -23,11 +23,13 @@ public interface IProjectManagementService
     Task<IReadOnlyList<TeamDto>> GetTeamsAsync(Guid projectId, CancellationToken cancellationToken);
     Task AssignTeamAsync(Guid projectId, Guid teamId, CancellationToken cancellationToken);
     Task RemoveTeamAsync(Guid projectId, Guid teamId, CancellationToken cancellationToken);
+    Task SetGitHubRepositoryAsync(Guid projectId, string? owner, string? name, CancellationToken cancellationToken);
+    Task<GitHubRepositorySummary?> GetGitHubSummaryAsync(Guid projectId, CancellationToken cancellationToken);
 }
 
 public sealed record ProjectMemberDto(Guid UserId, ProjectMemberRole Role);
 
-public sealed class ProjectManagementService(IApplicationDbContext context, ICurrentUserService currentUser, IOrganizationAuthorizationService organizationAuthorization)
+public sealed class ProjectManagementService(IApplicationDbContext context, ICurrentUserService currentUser, IOrganizationAuthorizationService organizationAuthorization, IGitHubIntegrationService gitHub)
     : IProjectManagementService
 {
     public async Task<ProjectPage> GetProjectsAsync(string? search, ProjectStatus? status, string? sortBy, bool descending, int page, int pageSize, CancellationToken ct)
@@ -76,11 +78,23 @@ public sealed class ProjectManagementService(IApplicationDbContext context, ICur
         if (!await context.ProjectTeams.AnyAsync(item => item.ProjectId == projectId && item.TeamId == teamId, ct)) { context.ProjectTeams.Add(new ProjectTeam { Id = Guid.NewGuid(), ProjectId = projectId, TeamId = teamId, AssignedAtUtc = DateTime.UtcNow }); await context.SaveChangesAsync(ct); }
     }
     public async Task RemoveTeamAsync(Guid projectId, Guid teamId, CancellationToken ct) { var project = await FindAsync(projectId, ct); await RequireManagerAsync(project, ct); var item = await context.ProjectTeams.SingleOrDefaultAsync(x => x.ProjectId == projectId && x.TeamId == teamId, ct) ?? throw new NotFoundException("Project team assignment was not found."); context.ProjectTeams.Remove(item); await context.SaveChangesAsync(ct); }
+    public async Task SetGitHubRepositoryAsync(Guid projectId, string? owner, string? name, CancellationToken ct)
+    {
+        var project = await FindAsync(projectId, ct); await RequireManagerAsync(project, ct);
+        project.GitHubRepositoryOwner = Optional(owner); project.GitHubRepositoryName = Optional(name); project.UpdatedAtUtc = DateTime.UtcNow;
+        await context.SaveChangesAsync(ct);
+    }
+    public async Task<GitHubRepositorySummary?> GetGitHubSummaryAsync(Guid projectId, CancellationToken ct)
+    {
+        var project = await FindAsync(projectId, ct); await RequireAccessAsync(project, ct);
+        if (project.GitHubRepositoryOwner is null || project.GitHubRepositoryName is null) return null;
+        return await gitHub.GetRepositorySummaryAsync(project.GitHubRepositoryOwner, project.GitHubRepositoryName, ct);
+    }
     private Guid UserId => currentUser.UserId ?? throw new UnauthorizedAccessException();
     private async Task<Project> FindAsync(Guid id, CancellationToken ct) => await context.Projects.SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException("Project was not found.");
     private async Task RequireAccessAsync(Project p, CancellationToken ct) { if (!await context.ProjectMembers.AnyAsync(m => m.ProjectId == p.Id && m.UserId == UserId, ct)) throw new ForbiddenAccessException("Project membership is required."); }
     private async Task RequireManagerAsync(Project p, CancellationToken ct) { var role = await context.ProjectMembers.Where(m => m.ProjectId == p.Id && m.UserId == UserId).Select(m => (ProjectMemberRole?)m.Role).SingleOrDefaultAsync(ct); if (role != ProjectMemberRole.Manager) await organizationAuthorization.RequireManagerAsync(p.OrganizationId, UserId, ct); }
-    private static ProjectDto ToDto(Project p) => new(p.Id, p.OrganizationId, p.Name, p.Key, p.Description, p.Status, p.OwnerId, p.CreatedAtUtc, p.UpdatedAtUtc);
+    private static ProjectDto ToDto(Project p) => new(p.Id, p.OrganizationId, p.Name, p.Key, p.Description, p.Status, p.OwnerId, p.CreatedAtUtc, p.UpdatedAtUtc, p.GitHubRepositoryOwner, p.GitHubRepositoryName);
     private static string Required(string value, string name) { var text = value?.Trim(); return string.IsNullOrWhiteSpace(text) ? throw new ArgumentException($"{name} is required.") : text; }
     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

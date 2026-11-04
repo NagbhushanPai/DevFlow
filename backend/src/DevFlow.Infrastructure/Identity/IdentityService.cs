@@ -44,6 +44,27 @@ public sealed class IdentityService : IIdentityService
         roles.ToArray());
 }
 
+    public async Task<UserInfo?> GetUserByIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+
+        if (user is null)
+        {
+            return null;
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return new UserInfo(
+            user.Id,
+            user.FirstName,
+            user.LastName,
+            user.Email!,
+            roles.ToArray());
+    }
+
     public async Task<UserCreationResult> CreateUserAsync(
         string firstName,
         string lastName,

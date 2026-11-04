@@ -10,6 +10,9 @@ using DevFlow.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using DevFlow.Infrastructure.Storage;
+using DevFlow.Infrastructure.Email;
+using DevFlow.Infrastructure.GitHub;
 
 
 namespace DevFlow.Infrastructure;
@@ -110,6 +113,20 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
 
     services.AddScoped<ICurrentUserService,CurrentUserService>();
+
+        services.Configure<AzureStorageSettings>(configuration.GetSection(AzureStorageSettings.SectionName));
+        services.AddScoped<IFileStorageService, AzureBlobStorageService>();
+
+        services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+        services.AddScoped<IEmailNotificationSender, SmtpEmailSender>();
+
+        services.Configure<GitHubSettings>(configuration.GetSection(GitHubSettings.SectionName));
+        services.AddHttpClient<IGitHubIntegrationService, GitHubIntegrationService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.github.com/");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("DevFlow");
+            client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+        }).AddStandardResilienceHandler();
 
         return services;
     }

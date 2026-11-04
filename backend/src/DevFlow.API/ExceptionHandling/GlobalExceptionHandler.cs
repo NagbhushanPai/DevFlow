@@ -53,6 +53,14 @@ public sealed class GlobalExceptionHandler(
                     Detail = exception.Message
                 },
 
+            ExternalServiceException =>
+                new ProblemDetails
+                {
+                    Status = StatusCodes.Status502BadGateway,
+                    Title = "External service unavailable",
+                    Detail = exception.Message
+                },
+
             ArgumentException =>
                 new ProblemDetails
                 {

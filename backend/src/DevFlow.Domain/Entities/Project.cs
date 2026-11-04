@@ -20,6 +20,10 @@ public class Project : BaseEntity
 
     public int NextIssueNumber { get; set; } = 1;
 
+    public string? GitHubRepositoryOwner { get; set; }
+
+    public string? GitHubRepositoryName { get; set; }
+
     public ICollection<ProjectMember> Members { get; set; }
         = new List<ProjectMember>();
 

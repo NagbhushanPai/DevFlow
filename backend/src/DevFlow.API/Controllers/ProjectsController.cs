@@ -109,7 +109,22 @@ public async Task<ActionResult<ProjectDto>> GetProjectById(
         await _projectService.RemoveTeamAsync(id, teamId, cancellationToken);
         return NoContent();
     }
+
+    [HttpPut("{id:guid}/github")]
+    public async Task<IActionResult> SetGitHubRepository(Guid id, GitHubRepositoryRequest request, CancellationToken cancellationToken)
+    {
+        await _projectService.SetGitHubRepositoryAsync(id, request.Owner, request.Name, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpGet("{id:guid}/github/summary")]
+    public async Task<ActionResult<DevFlow.Application.Common.Interfaces.GitHubRepositorySummary>> GetGitHubSummary(Guid id, CancellationToken cancellationToken)
+    {
+        var summary = await _projectService.GetGitHubSummaryAsync(id, cancellationToken);
+        return summary is null ? NoContent() : Ok(summary);
+    }
 }
 
 public sealed record UpdateProjectRequest(string Name, string Key, string? Description, ProjectStatus Status);
 public sealed record ProjectMemberRequest(ProjectMemberRole Role);
+public sealed record GitHubRepositoryRequest(string? Owner, string? Name);

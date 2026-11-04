@@ -4,6 +4,7 @@ using DevFlow.Application.Notifications;
 using DevFlow.Domain.Entities;
 using DevFlow.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DevFlow.Application.Issues;
 
@@ -25,7 +26,7 @@ public interface IIssueManagementService
     Task<IReadOnlyList<HistoryDto>> GetHistoryAsync(Guid issueId, CancellationToken ct);
 }
 
-public sealed class IssueManagementService(IApplicationDbContext context, ICurrentUserService currentUser, IRealtimeNotifier notifier) : IIssueManagementService
+public sealed class IssueManagementService(IApplicationDbContext context, ICurrentUserService currentUser, IRealtimeNotifier notifier, IEmailNotificationSender emailSender, IIdentityService identityService, ILogger<IssueManagementService> logger) : IIssueManagementService
 {
     public async Task<IssuePage> GetIssuesAsync(Guid projectId, string? search, IssueStatus? status, IssuePriority? priority, Guid? assigneeId, string? sortBy, bool descending, int page, int pageSize, CancellationToken ct)
     {
@@ -93,6 +94,19 @@ public sealed class IssueManagementService(IApplicationDbContext context, ICurre
         context.Notifications.Add(notification);
         await context.SaveChangesAsync(ct);
         await notifier.NotificationCreatedAsync(userId, new NotificationDto(notification.Id, notification.Title, notification.Message, notification.IsRead, notification.CreatedAtUtc), ct);
+        await SendEmailBestEffortAsync(userId, title, message, ct);
+    }
+    private async Task SendEmailBestEffortAsync(Guid userId, string subject, string body, CancellationToken ct)
+    {
+        try
+        {
+            var user = await identityService.GetUserByIdAsync(userId, ct);
+            if (user is not null) await emailSender.SendAsync(user.Email, subject, body, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send notification email to user {UserId}.", userId);
+        }
     }
     private static IssueDto ToDto(Issue i) => new(i.Id, i.ProjectId, i.IssueNumber, i.Title, i.Description, i.Type, i.Status, i.Priority, i.ReporterId, i.AssigneeId, i.CreatedAtUtc, i.UpdatedAtUtc);
     private static string Required(string value) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("A value is required.") : value.Trim();

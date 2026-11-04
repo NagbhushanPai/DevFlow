@@ -11,5 +11,7 @@ public sealed record ProjectDto(
     ProjectStatus Status,
     Guid OwnerId,
     DateTime CreatedAtUtc,
-    DateTime? UpdatedAtUtc
+    DateTime? UpdatedAtUtc,
+    string? GitHubRepositoryOwner,
+    string? GitHubRepositoryName
 );
