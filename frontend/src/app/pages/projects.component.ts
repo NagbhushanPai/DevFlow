@@ -47,7 +47,7 @@ export class ProjectsComponent {
   gitHubOwner = ''; gitHubName = ''; gitHubSummary?: GitHubSummary; gitHubError = ''; attachmentError = '';
 
   constructor() { this.load(); }
-  load() { this.api.get<{ items: Project[] }>('/projects?page=1&pageSize=50').subscribe(result => this.projects = result.items); }
+  load() { this.api.get<{ items: Project[] }>(`/projects?search=${encodeURIComponent(this.search)}&page=1&pageSize=50`).subscribe(result => this.projects = result.items); }
   select(project: Project) { this.selected = project; this.selectedIssue = undefined; this.gitHubSummary = undefined; this.gitHubError = ''; this.gitHubOwner = project.gitHubRepositoryOwner ?? ''; this.gitHubName = project.gitHubRepositoryName ?? ''; this.loadIssues(); if (project.gitHubRepositoryOwner) this.loadGitHubSummary(); }
   loadIssues() { if (!this.selected) return; this.api.get<{ items: Issue[] }>(`/projects/${this.selected.id}/issues?search=${encodeURIComponent(this.issueSearch)}&page=1&pageSize=50`).subscribe(result => this.issues = result.items); }
   selectIssue(issue: Issue) {
@@ -63,6 +63,7 @@ export class ProjectsComponent {
   onFileSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file || !this.selectedIssue) return;
+    if (file.size > 25 * 1024 * 1024) { this.attachmentError = 'Attachments must be 25 MB or smaller.'; return; }
     this.attachmentError = '';
     const formData = new FormData();
     formData.append('file', file);

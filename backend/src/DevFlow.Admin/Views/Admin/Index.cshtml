@@ -1,0 +1,46 @@
+@model DevFlow.Admin.Controllers.DashboardViewModel
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DevFlow Admin</title>
+    <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+    <header><h1>DevFlow Administration</h1></header>
+    <main>
+        <section class="cards">
+            <article><strong>@Model.Organizations</strong><span>Organizations</span></article>
+            <article><strong>@Model.ActiveProjects</strong><span>Active projects</span></article>
+            <article><strong>@Model.OpenIssues</strong><span>Open issues</span></article>
+        </section>
+        <section class="panel">
+            <h2>Recent activity</h2>
+            <p id="report-status">Loading report totals...</p>
+            <table>
+                <thead><tr><th>Time</th><th>Action</th><th>Status</th><th>User</th><th>IP address</th></tr></thead>
+                <tbody>
+                @foreach (var entry in Model.RecentAudit)
+                {
+                    <tr><td>@entry.CreatedAtUtc.ToLocalTime()</td><td>@entry.Action</td><td>@entry.StatusCode</td><td>@entry.UserId</td><td>@entry.IpAddress</td></tr>
+                }
+                </tbody>
+            </table>
+        </section>
+    </main>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
+        $(function () {
+            $.getJSON('@Url.Action("Reports", "Admin")')
+                .done(function (report) {
+                    $('#report-status').text(
+                        'Report totals: ' + report.organizations + ' organizations, ' +
+                        report.projects + ' projects, ' + report.issues + ' open issues, ' +
+                        report.auditEvents + ' audit events.');
+                })
+                .fail(function () { $('#report-status').text('Report totals are unavailable.'); });
+        });
+    </script>
+</body>
+</html>

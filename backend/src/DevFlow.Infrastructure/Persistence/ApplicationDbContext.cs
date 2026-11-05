@@ -42,6 +42,7 @@ public class ApplicationDbContext
     public DbSet<Notification> Notifications => Set<Notification>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     // Organization and Team entities
     public DbSet<Organization> Organizations => Set<Organization>();
