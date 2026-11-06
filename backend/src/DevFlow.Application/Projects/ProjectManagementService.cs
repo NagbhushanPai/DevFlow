@@ -29,7 +29,7 @@ public interface IProjectManagementService
 
 public sealed record ProjectMemberDto(Guid UserId, ProjectMemberRole Role);
 
-public sealed class ProjectManagementService(IApplicationDbContext context, ICurrentUserService currentUser, IOrganizationAuthorizationService organizationAuthorization, IGitHubIntegrationService gitHub)
+public sealed class ProjectManagementService(IApplicationDbContext context, ICurrentUserService currentUser, IOrganizationAuthorizationService organizationAuthorization, IGitHubIntegrationService gitHub, ICacheService cache)
     : IProjectManagementService
 {
     public async Task<ProjectPage> GetProjectsAsync(string? search, ProjectStatus? status, string? sortBy, bool descending, int page, int pageSize, CancellationToken ct)
@@ -45,14 +45,25 @@ public sealed class ProjectManagementService(IApplicationDbContext context, ICur
         return new ProjectPage(items, page, pageSize, total);
     }
 
-    public async Task<ProjectDto> GetProjectAsync(Guid projectId, CancellationToken ct) { var project = await FindAsync(projectId, ct); await RequireAccessAsync(project, ct); return ToDto(project); }
+    public async Task<ProjectDto> GetProjectAsync(Guid projectId, CancellationToken ct)
+    {
+        var project = await FindAsync(projectId, ct);
+        await RequireAccessAsync(project, ct);
+        var cacheKey = ProjectCacheKey(projectId, UserId);
+        var cached = await cache.GetAsync<ProjectDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+        var dto = ToDto(project);
+        await cache.SetAsync(cacheKey, dto, TimeSpan.FromMinutes(2), ct);
+        return dto;
+    }
     public async Task UpdateProjectAsync(Guid projectId, string name, string key, string? description, ProjectStatus status, CancellationToken ct)
     {
         var project = await FindAsync(projectId, ct); await RequireManagerAsync(project, ct);
         project.Name = Required(name, "Project name"); project.Key = Required(key, "Project key").ToUpperInvariant(); project.Description = Optional(description); project.Status = status; project.UpdatedAtUtc = DateTime.UtcNow;
         await context.SaveChangesAsync(ct);
+        await cache.RemoveAsync(ProjectCacheKey(projectId, UserId), ct);
     }
-    public async Task DeleteProjectAsync(Guid projectId, CancellationToken ct) { var project = await FindAsync(projectId, ct); await RequireManagerAsync(project, ct); context.Projects.Remove(project); await context.SaveChangesAsync(ct); }
+    public async Task DeleteProjectAsync(Guid projectId, CancellationToken ct) { var project = await FindAsync(projectId, ct); await RequireManagerAsync(project, ct); context.Projects.Remove(project); await context.SaveChangesAsync(ct); await cache.RemoveAsync(ProjectCacheKey(projectId, UserId), ct); }
     public async Task<IReadOnlyList<ProjectMemberDto>> GetMembersAsync(Guid projectId, CancellationToken ct) { var project = await FindAsync(projectId, ct); await RequireAccessAsync(project, ct); return await context.ProjectMembers.Where(m => m.ProjectId == projectId).Select(m => new ProjectMemberDto(m.UserId, m.Role)).ToListAsync(ct); }
     public async Task SetMemberAsync(Guid projectId, Guid userId, ProjectMemberRole role, CancellationToken ct)
     {
@@ -83,6 +94,7 @@ public sealed class ProjectManagementService(IApplicationDbContext context, ICur
         var project = await FindAsync(projectId, ct); await RequireManagerAsync(project, ct);
         project.GitHubRepositoryOwner = Optional(owner); project.GitHubRepositoryName = Optional(name); project.UpdatedAtUtc = DateTime.UtcNow;
         await context.SaveChangesAsync(ct);
+        await cache.RemoveAsync(ProjectCacheKey(projectId, UserId), ct);
     }
     public async Task<GitHubRepositorySummary?> GetGitHubSummaryAsync(Guid projectId, CancellationToken ct)
     {
@@ -91,6 +103,7 @@ public sealed class ProjectManagementService(IApplicationDbContext context, ICur
         return await gitHub.GetRepositorySummaryAsync(project.GitHubRepositoryOwner, project.GitHubRepositoryName, ct);
     }
     private Guid UserId => currentUser.UserId ?? throw new UnauthorizedAccessException();
+    private static string ProjectCacheKey(Guid projectId, Guid userId) => $"project:{userId:D}:{projectId:D}";
     private async Task<Project> FindAsync(Guid id, CancellationToken ct) => await context.Projects.SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException("Project was not found.");
     private async Task RequireAccessAsync(Project p, CancellationToken ct) { if (!await context.ProjectMembers.AnyAsync(m => m.ProjectId == p.Id && m.UserId == UserId, ct)) throw new ForbiddenAccessException("Project membership is required."); }
     private async Task RequireManagerAsync(Project p, CancellationToken ct) { var role = await context.ProjectMembers.Where(m => m.ProjectId == p.Id && m.UserId == UserId).Select(m => (ProjectMemberRole?)m.Role).SingleOrDefaultAsync(ct); if (role != ProjectMemberRole.Manager) await organizationAuthorization.RequireManagerAsync(p.OrganizationId, UserId, ct); }

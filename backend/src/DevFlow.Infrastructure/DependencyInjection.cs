@@ -13,6 +13,7 @@ using System.Security.Claims;
 using DevFlow.Infrastructure.Storage;
 using DevFlow.Infrastructure.Email;
 using DevFlow.Infrastructure.GitHub;
+using DevFlow.Infrastructure.Caching;
 
 
 namespace DevFlow.Infrastructure;
@@ -34,6 +35,21 @@ public static class DependencyInjection
         services.AddHealthChecks()
             .AddDbContextCheck<ApplicationDbContext>(
                 name: "database");
+
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+        if (string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            services.AddDistributedMemoryCache();
+        }
+        else
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnectionString;
+                options.InstanceName = "devflow:";
+            });
+        }
+        services.AddSingleton<ICacheService, DistributedCacheService>();
 
         services.AddScoped<IApplicationDbContext>(
             provider => provider.GetRequiredService<ApplicationDbContext>());

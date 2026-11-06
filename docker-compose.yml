@@ -14,6 +14,11 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   api:
     build:
       context: .
@@ -22,12 +27,15 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=DevFlowDb;User Id=sa;Password=DevFlowSqlPassword!123;TrustServerCertificate=True"
       JwtSettings__Secret: "DevFlowLocalDevelopmentSecretKey12345678901234567890"
+      ConnectionStrings__Redis: "redis:6379"
       Cors__AllowedOrigins__0: "http://localhost:4200"
     ports:
       - "8080:8080"
     depends_on:
       sql:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     build:
