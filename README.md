@@ -232,14 +232,14 @@ Important system actions will be recorded, including:
 
 ## Frontend
 
-- Angular 17+
+- Angular 20
 - TypeScript
 - HTML5
 - CSS / SCSS
 - Angular Router
 - Angular Reactive Forms
 - Angular HTTP Client
-- Angular CDK Drag and Drop
+- Native drag-and-drop Kanban interactions
 - RxJS
 
 ## Backend
@@ -271,7 +271,7 @@ Important system actions will be recorded, including:
 
 ### Frontend
 
-- Angular Unit Testing Framework
+- Vitest through Angular's unit-test builder
 
 ## Cloud
 
@@ -304,7 +304,7 @@ DevFlow follows a layered Clean Architecture approach.
 
 ```text
                          ┌──────────────────────┐
-                         │     Angular 17+      │
+                         │     Angular 20       │
                          │       Frontend       │
                          └───────────┬──────────┘
                                      │
@@ -370,11 +370,11 @@ DevFlow/
 │
 ├── frontend/
 │   │
-│   └── devflow-angular/
+│   ├── src/
+│   ├── Dockerfile
+│   └── nginx.conf
 │
-├── legacy-admin/
-│   │
-│   └── DevFlow.Admin/
+├── backend/src/DevFlow.Admin/
 │
 ├── docs/
 │   │
@@ -384,7 +384,7 @@ DevFlow/
 │
 ├── .github/
 │   │
-│   └── workflows/
+│   └── workflows/ci.yml
 │
 ├── docker-compose.yml
 │
@@ -873,6 +873,20 @@ Used for:
 - Route guards
 - Forms
 
+Run the frontend tests with:
+
+```bash
+cd frontend
+npm test
+```
+
+The current suite covers the authentication guard, authentication service,
+and dashboard component. Backend tests can be run from the repository root with:
+
+```bash
+dotnet test backend/DevFlow.slnx
+```
+
 ---
 
 # Performance Optimization
@@ -886,9 +900,11 @@ Performance techniques include:
 - Projection using DTOs
 - Redis caching
 - In-memory caching
-- Response compression
+- Response compression (planned)
 
-Potential performance issues such as N+1 queries will be monitored and optimized.
+Database indexes, DTO projections, server-side pagination, and Redis/distributed
+caching are implemented. Query-plan benchmarking and broader cache coverage remain
+future work.
 
 ---
 
@@ -936,9 +952,14 @@ Example error response:
 
 ---
 
-# CI/CD Pipeline
+# Continuous Integration
 
-The CI/CD workflow automates application testing, building, and deployment.
+The GitHub Actions workflow at `.github/workflows/ci.yml` runs on pushes to `main`
+and pull requests. It restores, builds, and tests the backend, then installs
+frontend dependencies, runs Angular tests, and builds the production frontend.
+
+The workflow currently provides continuous integration. Docker image publishing,
+Azure deployment, and deployment verification are planned follow-up work.
 
 ```text
 Developer Push
@@ -965,20 +986,14 @@ Build Angular Application
 Run Frontend Tests
       │
       ▼
-Build Docker Images
-      │
-      ▼
-Deploy Application
-      │
-      ▼
-Azure
+CI result
 ```
 
 ---
 
-# Azure Deployment
+# Azure Deployment (Planned)
 
-The planned production infrastructure is:
+Azure deployment is not yet automated. The intended production infrastructure is:
 
 ```text
 Angular Frontend
@@ -1006,6 +1021,10 @@ Azure services used:
 - Azure SQL Database
 - Azure Blob Storage
 - Azure Application Insights
+- Azure health monitoring
+
+Deployment manifests, Application Insights wiring, and CI/CD deployment stages
+remain to be added.
 
 ---
 
@@ -1074,19 +1093,19 @@ dotnet run --project src/DevFlow.API
 Navigate to the Angular application:
 
 ```bash
-cd frontend/devflow-angular
+cd frontend
 ```
 
 Install dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
 Run the development server:
 
 ```bash
-ng serve
+npm start
 ```
 
 The frontend will run using the URL displayed by the Angular CLI.
@@ -1101,18 +1120,20 @@ Example backend configuration:
 
 ```text
 ConnectionStrings__DefaultConnection
-
-Jwt__Key
-
-Jwt__Issuer
-
-Jwt__Audience
-
+ConnectionStrings__Redis
+JwtSettings__Secret
+JwtSettings__Issuer
+JwtSettings__Audience
+JwtSettings__ExpirationInMinutes
 AzureStorage__ConnectionString
-
-Email__ApiKey
-
-Redis__ConnectionString
+AzureStorage__ContainerName
+EmailSettings__Host
+EmailSettings__Port
+EmailSettings__Username
+EmailSettings__Password
+EmailSettings__FromAddress
+EmailSettings__FromName
+GitHub__Token
 ```
 
 Use environment variables, development secrets, or Azure configuration services to manage sensitive values.
@@ -1121,13 +1142,25 @@ Use environment variables, development secrets, or Azure configuration services 
 
 # Running with Docker
 
-After Docker support is implemented:
-
 ```bash
 docker compose up --build
 ```
 
-The Docker Compose environment will contain the required application services for local development.
+The Compose environment starts:
+
+- SQL Server on port `1433`
+- Redis on port `6379`
+- ASP.NET Core API on port `8080`
+- Angular/Nginx frontend on port `4200`
+
+The API uses the Redis service when running through Compose and falls back to
+ASP.NET Core distributed memory cache when no Redis connection string is configured.
+
+Stop the services with:
+
+```bash
+docker compose down
+```
 
 ---
 
@@ -1149,13 +1182,28 @@ Swagger provides:
 
 # Project Status
 
-**Current Status:** Planning and Design
+**Current Status:** Functional MVP with active hardening and deployment preparation
 
-Current development phase:
+Implemented capabilities include:
 
-```text
-Phase 1 — Requirements and Planning
-```
+- Authentication and role/resource authorization
+- Organizations, teams, projects, issues, comments, and activity history
+- Sprints and Kanban board
+- SignalR realtime issue/comment/notification events
+- Azure Blob Storage, email, and GitHub integrations
+- Redis-compatible distributed caching with local fallback
+- Rate limiting and persisted audit logging
+- Angular frontend tests and backend unit/integration tests
+- Docker and Docker Compose
+- GitHub Actions continuous integration
+- MVC/Razor legacy admin reporting module
+
+Remaining roadmap work includes:
+
+- Query-performance benchmarking and optimization
+- Automated Docker publishing and Azure deployment
+- Azure SQL, Blob Storage, Application Insights, and production health monitoring
+- Additional frontend and integration coverage
 
 The project is under active development.
 
