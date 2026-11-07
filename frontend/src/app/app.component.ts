@@ -12,6 +12,12 @@ import { RealtimeService } from './core/realtime.service';
   template: `<header>
     <a routerLink="/dashboard" class="brand">DevFlow</a>
     <ng-container *ngIf="auth.isAuthenticated()">
+      <nav class="main-nav" aria-label="Primary navigation">
+        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+        <a routerLink="/organizations" routerLinkActive="active">Organizations</a>
+        <a routerLink="/projects" routerLinkActive="active">Projects</a>
+      </nav>
+      <div class="header-actions">
       <div class="notifications">
         <button (click)="toggle()">Notifications <span *ngIf="notifications.unreadCount() > 0">({{ notifications.unreadCount() }})</span></button>
         <ul *ngIf="open()">
@@ -23,6 +29,7 @@ import { RealtimeService } from './core/realtime.service';
         </ul>
       </div>
       <button (click)="signOut()">Sign out</button>
+      </div>
     </ng-container>
   </header>
   <main><router-outlet /></main>`
