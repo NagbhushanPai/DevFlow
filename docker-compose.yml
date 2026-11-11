@@ -3,13 +3,13 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "DevFlowSqlPassword!123"
+      MSSQL_SA_PASSWORD: "${DEVFLOW_SQL_PASSWORD:?Set DEVFLOW_SQL_PASSWORD in .env}"
     ports:
       - "1433:1433"
     volumes:
       - devflow-sql:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'DevFlowSqlPassword!123' -C -Q 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q 'SELECT 1' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -24,9 +24,10 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=DevFlowDb;User Id=sa;Password=DevFlowSqlPassword!123;TrustServerCertificate=True"
-      JwtSettings__Secret: "DevFlowLocalDevelopmentSecretKey12345678901234567890"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+      Database__ApplyMigrations: "true"
+      ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=DevFlowDb;User Id=sa;Password=${DEVFLOW_SQL_PASSWORD};TrustServerCertificate=True"
+      JwtSettings__Secret: "${DEVFLOW_JWT_SECRET:?Set DEVFLOW_JWT_SECRET in .env}"
       ConnectionStrings__Redis: "redis:6379"
       Cors__AllowedOrigins__0: "http://localhost:4200"
     ports:

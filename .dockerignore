@@ -1,0 +1,11 @@
+.git
+.github
+.env
+frontend/node_modules
+frontend/dist
+frontend/.angular
+backend/**/bin
+backend/**/obj
+**/*.user
+**/*.suo
+*.md

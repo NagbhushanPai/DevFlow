@@ -6,6 +6,8 @@ using DevFlow.Application;
 using DevFlow.API.Extensions;
 using DevFlow.API.Hubs;
 using DevFlow.Application.Common.Interfaces;
+using DevFlow.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -93,6 +95,13 @@ app.MapControllers();
 app.MapHub<IssueHub>("/hubs/issues");
 
 app.MapHealthChecks("/health");
+
+if (builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 await IdentitySeeder.SeedRolesAsync(app.Services);
 

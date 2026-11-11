@@ -12,6 +12,9 @@ export class AuthService {
   readonly isAuthenticated = () => { const value = this.state(); return !!value && new Date(value.expiresAtUtc) > new Date(); };
   constructor(private readonly http: HttpClient, private readonly router: Router) {}
   login(email: string, password: string) { return this.http.post<AuthenticationResult>('/api/auth/login', { email, password }).pipe(tap(result => this.save(result))); }
+  register(firstName: string, lastName: string, email: string, password: string) {
+    return this.http.post<AuthenticationResult>('/api/auth/register', { firstName, lastName, email, password }).pipe(tap(result => this.save(result)));
+  }
   save(result: AuthenticationResult) { localStorage.setItem(this.key, JSON.stringify(result)); this.state.set(result); }
   token() { return this.isAuthenticated() ? this.state()!.token : null; }
   logout() { localStorage.removeItem(this.key); this.state.set(null); void this.router.navigate(['/login']); }

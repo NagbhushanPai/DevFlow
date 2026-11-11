@@ -1034,6 +1034,39 @@ remain to be added.
 
 # Getting Started
 
+## Run a local demo with Docker
+
+The repository includes a complete Docker Compose demo stack: Angular, ASP.NET Core,
+SQL Server, and Redis. The API applies EF Core migrations automatically when the
+Compose stack starts.
+
+1. Copy `.env.example` to `.env`.
+2. Replace both values in `.env` with local secrets. The SQL Server password must
+   satisfy SQL Server complexity requirements, and the JWT secret should be at least
+   32 characters.
+3. Start the stack:
+
+   ```bash
+   docker compose up --build
+   ```
+
+4. Open [http://localhost:4200](http://localhost:4200). The API health endpoint is
+   available at [http://localhost:8080/health](http://localhost:8080/health). Swagger
+   is available at [http://localhost:8080/swagger](http://localhost:8080/swagger) when
+   `ASPNETCORE_ENVIRONMENT=Development` is set in `.env`.
+
+Register a demo user from the application, then create an organization, project, and
+issues. The frontend container proxies `/api` and `/hubs` to the API, so the browser
+only needs the frontend URL.
+
+Stop the stack with:
+
+```bash
+docker compose down
+```
+
+Add `-v` only when you intentionally want to delete the local SQL Server data.
+
 ## Prerequisites
 
 Install the following tools:
