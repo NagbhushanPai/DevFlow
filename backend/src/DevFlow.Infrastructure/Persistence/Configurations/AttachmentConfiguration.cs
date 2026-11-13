@@ -17,8 +17,8 @@ public class AttachmentConfiguration
             .HasMaxLength(255)
             .IsRequired();
 
-        builder.Property(attachment => attachment.FileUrl)
-            .HasMaxLength(2000)
+        builder.Property(attachment => attachment.StorageKey)
+            .HasMaxLength(500)
             .IsRequired();
 
         builder.Property(attachment => attachment.ContentType)

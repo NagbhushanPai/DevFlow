@@ -142,3 +142,6 @@ docker-compose.override.yml
 Generated/
 
 reasoning.md
+
+# Local run guide with demo credentials (intentionally not committed)
+HOW_TO_RUN.md

@@ -1,9 +1,9 @@
 using DevFlow.Application.Common.Interfaces;
 using DevFlow.Domain.Entities;
 using DevFlow.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 
 namespace DevFlow.Infrastructure.Persistence;
 

@@ -1,160 +1,64 @@
+using DevFlow.Application.Authentication.Commands.Register;
+using DevFlow.Application.Common.Exceptions;
 using DevFlow.Application.Common.Interfaces;
 using DevFlow.Application.Common.Models;
-using DevFlow.Application.Authentication.Commands.Register;
 using Moq;
 
 namespace DevFlow.UnitTests.Application.Authentication;
 
 public sealed class RegisterCommandHandlerTests
 {
-    private readonly Mock<IIdentityService> _identityServiceMock;
-    private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock;
+    private readonly Mock<IIdentityService> _identity = new();
+    private readonly Mock<IJwtTokenGenerator> _jwt = new();
+    private readonly Mock<IRefreshTokenService> _refreshTokens = new();
     private readonly RegisterCommandHandler _handler;
 
     public RegisterCommandHandlerTests()
     {
-        _identityServiceMock = new Mock<IIdentityService>();
-        _jwtTokenGeneratorMock = new Mock<IJwtTokenGenerator>();
-
-        _handler = new RegisterCommandHandler(
-            _identityServiceMock.Object,
-            _jwtTokenGeneratorMock.Object);
+        _handler = new RegisterCommandHandler(_identity.Object, _jwt.Object, _refreshTokens.Object);
     }
 
     [Fact]
-    public async Task Handle_WhenRegistrationIsValid_ReturnsAuthenticationResult()
+    public async Task Handle_WhenRegistrationIsValid_ReturnsTokensAndAssignsDeveloperRole()
     {
-        // Arrange
         var userId = Guid.NewGuid();
+        var command = new RegisterCommand("Test", "Developer", "test@devflow.com", "Test@1234");
 
-        var command = new RegisterCommand(
-            "Test",
-            "Developer",
-            "test@devflow.com",
-            "Test@123");
+        _identity.Setup(s => s.UserExistsByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _identity.Setup(s => s.CreateUserAsync(command.FirstName, command.LastName, command.Email, command.Password, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserCreationResult(true, userId, []));
+        _jwt.Setup(g => g.GenerateToken(It.IsAny<UserInfo>())).Returns(new JwtTokenResult("access", DateTime.UtcNow.AddMinutes(15)));
+        _refreshTokens.Setup(r => r.IssueAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefreshTokenResult("refresh", DateTime.UtcNow.AddDays(7)));
 
-        _identityServiceMock
-            .Setup(service =>
-                service.UserExistsByEmailAsync(
-                    command.Email,
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        _identityServiceMock
-            .Setup(service =>
-                service.CreateUserAsync(
-                    command.FirstName,
-                    command.LastName,
-                    command.Email,
-                    command.Password,
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-                new UserCreationResult(
-                    true,
-                    userId,
-                    []));
-
-        _identityServiceMock
-            .Setup(service =>
-                service.AddToRoleAsync(
-                    userId,
-                    It.IsAny<string>(),
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        _jwtTokenGeneratorMock
-            .Setup(generator =>
-                generator.GenerateToken(
-                    It.IsAny<UserInfo>()))
-            .Returns(
-                new JwtTokenResult(
-                    "test-token",
-                    DateTime.UtcNow.AddHours(1)));
-
-        // Act
-        var result = await _handler.Handle(
-            command,
-            CancellationToken.None);
-
-        // Assert
         Assert.Equal(userId, result.UserId);
-        Assert.Equal(command.FirstName, result.FirstName);
-        Assert.Equal(command.LastName, result.LastName);
         Assert.Equal(command.Email, result.Email);
         Assert.Contains("Developer", result.Roles);
-        Assert.Equal("test-token", result.Token);
+        Assert.Equal("access", result.Token);
+        Assert.Equal("refresh", result.RefreshToken);
+        _identity.Verify(s => s.AddToRoleAsync(userId, "Developer", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-public async Task Handle_WhenEmailAlreadyExists_ThrowsRegistrationException()
-{
-    // Arrange
-    var command = new RegisterCommand(
-        "Test",
-        "Developer",
-        "test@devflow.com",
-        "Test@123");
+    public async Task Handle_WhenEmailAlreadyExists_ThrowsRegistrationException()
+    {
+        var command = new RegisterCommand("Test", "Developer", "test@devflow.com", "Test@1234");
+        _identity.Setup(s => s.UserExistsByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-    _identityServiceMock
-        .Setup(service =>
-            service.UserExistsByEmailAsync(
-                command.Email,
-                It.IsAny<CancellationToken>()))
-        .ReturnsAsync(true);
+        await Assert.ThrowsAsync<RegistrationException>(() => _handler.Handle(command, CancellationToken.None));
+        _refreshTokens.Verify(r => r.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
-    // Act
-    var action = async () =>
-        await _handler.Handle(
-            command,
-            CancellationToken.None);
+    [Fact]
+    public async Task Handle_WhenIdentityCreationFails_ThrowsRegistrationException()
+    {
+        var command = new RegisterCommand("Test", "Developer", "test@devflow.com", "weak");
+        _identity.Setup(s => s.UserExistsByEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _identity.Setup(s => s.CreateUserAsync(command.FirstName, command.LastName, command.Email, command.Password, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserCreationResult(false, null, ["Password validation failed."]));
 
-    // Assert
-    await Assert.ThrowsAsync<
-        DevFlow.Application.Common.Exceptions.RegistrationException>(
-            action);
-}
-
-
-[Fact]
-public async Task Handle_WhenIdentityCreationFails_ThrowsRegistrationException()
-{
-    // Arrange
-    var command = new RegisterCommand(
-        "Test",
-        "Developer",
-        "test@devflow.com",
-        "weak");
-
-    _identityServiceMock
-        .Setup(service =>
-            service.UserExistsByEmailAsync(
-                command.Email,
-                It.IsAny<CancellationToken>()))
-        .ReturnsAsync(false);
-
-    _identityServiceMock
-        .Setup(service =>
-            service.CreateUserAsync(
-                command.FirstName,
-                command.LastName,
-                command.Email,
-                command.Password,
-                It.IsAny<CancellationToken>()))
-        .ReturnsAsync(
-            new UserCreationResult(
-                false,
-                null,
-                ["Password validation failed."]));
-
-    // Act
-    var action = async () =>
-        await _handler.Handle(
-            command,
-            CancellationToken.None);
-
-    // Assert
-    await Assert.ThrowsAsync<
-        DevFlow.Application.Common.Exceptions.RegistrationException>(
-            action);
-}
+        await Assert.ThrowsAsync<RegistrationException>(() => _handler.Handle(command, CancellationToken.None));
+    }
 }

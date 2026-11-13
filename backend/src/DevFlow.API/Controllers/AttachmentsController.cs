@@ -1,31 +1,50 @@
 using DevFlow.Application.Issues;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 
 namespace DevFlow.API.Controllers;
 
 [Route("api")]
-[Authorize]
 public sealed class AttachmentsController(IAttachmentManagementService attachments) : BaseApiController
 {
-    private const long MaxFileSizeBytes = 25 * 1024 * 1024;
-
     [HttpGet("issues/{issueId:guid}/attachments")]
     public async Task<ActionResult<IReadOnlyList<AttachmentDto>>> GetAttachments(Guid issueId, CancellationToken ct) =>
         Ok(await attachments.GetAttachmentsAsync(issueId, ct));
 
     [HttpPost("issues/{issueId:guid}/attachments")]
-    [RequestSizeLimit(MaxFileSizeBytes)]
+    [RequestSizeLimit(AttachmentManagementService.MaxFileSizeBytes + 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = AttachmentManagementService.MaxFileSizeBytes + 1024 * 1024)]
+    [Consumes("multipart/form-data")]
     public async Task<ActionResult<AttachmentDto>> Upload(Guid issueId, IFormFile file, CancellationToken ct)
     {
-        if (file is null || file.Length == 0) return BadRequest("A non-empty file is required.");
-        if (file.Length > MaxFileSizeBytes) return BadRequest("The file exceeds the maximum allowed size.");
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest("A non-empty file is required.");
+        }
 
         await using var stream = file.OpenReadStream();
-        var result = await attachments.UploadAsync(issueId, stream, file.FileName, file.ContentType, file.Length, ct);
+        var result = await attachments.UploadAsync(issueId, stream, file.FileName, file.Length, ct);
         return StatusCode(StatusCodes.Status201Created, result);
     }
 
+    /// <summary>
+    /// Streams the file to project members. Always sent as a download with <c>nosniff</c> so the browser never
+    /// renders uploaded content inline from our origin.
+    /// </summary>
+    [HttpGet("attachments/{id:guid}/download")]
+    [Produces("application/octet-stream")]
+    public async Task<IActionResult> Download(Guid id, CancellationToken ct)
+    {
+        var download = await attachments.DownloadAsync(id, ct);
+        Response.Headers[HeaderNames.XContentTypeOptions] = "nosniff";
+        Response.Headers[HeaderNames.ContentSecurityPolicy] = "default-src 'none'; sandbox";
+        return File(download.Content, download.ContentType, download.FileName);
+    }
+
     [HttpDelete("attachments/{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct) { await attachments.DeleteAsync(id, ct); return NoContent(); }
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await attachments.DeleteAsync(id, ct);
+        return NoContent();
+    }
 }

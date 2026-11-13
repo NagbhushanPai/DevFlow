@@ -33,21 +33,21 @@ public class Issue : BaseEntity
     public Sprint? Sprint { get; set; }
 
 
-public ICollection<Comment> Comments { get; set; }
-    = new List<Comment>();
+    public ICollection<Comment> Comments { get; set; }
+        = new List<Comment>();
 
-public ICollection<Attachment> Attachments { get; set; }
-    = new List<Attachment>();
+    public ICollection<Attachment> Attachments { get; set; }
+        = new List<Attachment>();
 
-public ICollection<IssueHistory> History { get; set; }
-    = new List<IssueHistory>();
+    public ICollection<IssueHistory> History { get; set; }
+        = new List<IssueHistory>();
 
-public ICollection<IssueLabel> IssueLabels { get; set; }
-    = new List<IssueLabel>();
+    public ICollection<IssueLabel> IssueLabels { get; set; }
+        = new List<IssueLabel>();
 
-public ICollection<IssueLink> OutgoingLinks { get; set; }
-    = new List<IssueLink>();
+    public ICollection<IssueLink> OutgoingLinks { get; set; }
+        = new List<IssueLink>();
 
-public ICollection<IssueLink> IncomingLinks { get; set; }
-    = new List<IssueLink>();
+    public ICollection<IssueLink> IncomingLinks { get; set; }
+        = new List<IssueLink>();
 }

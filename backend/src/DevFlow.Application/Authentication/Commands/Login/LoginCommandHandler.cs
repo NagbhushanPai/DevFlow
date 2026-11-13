@@ -5,53 +5,24 @@ using MediatR;
 
 namespace DevFlow.Application.Authentication.Commands.Login;
 
-public sealed class LoginCommandHandler
+public sealed class LoginCommandHandler(
+    IIdentityService identityService,
+    IJwtTokenGenerator jwtTokenGenerator,
+    IRefreshTokenService refreshTokenService)
     : IRequestHandler<LoginCommand, AuthenticationResult>
 {
-    private readonly IIdentityService _identityService;
-    private readonly IJwtTokenGenerator _jwtTokenGenerator;
-
-    public LoginCommandHandler(
-        IIdentityService identityService,
-        IJwtTokenGenerator jwtTokenGenerator)
+    public async Task<AuthenticationResult> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        _identityService = identityService;
-        _jwtTokenGenerator = jwtTokenGenerator;
-    }
+        var user = await identityService.GetUserByEmailAsync(request.Email, cancellationToken)
+            ?? throw new InvalidCredentialsException();
 
-    public async Task<AuthenticationResult> Handle(
-        LoginCommand request,
-        CancellationToken cancellationToken)
-    {
-        var user = await _identityService.GetUserByEmailAsync(
-            request.Email,
-            cancellationToken);
-
-        if (user is null)
+        if (!await identityService.CheckPasswordAsync(user.Id, request.Password, cancellationToken))
         {
             throw new InvalidCredentialsException();
         }
 
-        var passwordIsValid =
-            await _identityService.CheckPasswordAsync(
-                user.Id,
-                request.Password,
-                cancellationToken);
-
-        if (!passwordIsValid)
-        {
-            throw new InvalidCredentialsException();
-        }
-
-        var token = _jwtTokenGenerator.GenerateToken(user);
-
-        return new AuthenticationResult(
-            user.Id,
-            user.FirstName,
-            user.LastName,
-            user.Email,
-            user.Roles,
-            token.Token,
-            token.ExpiresAtUtc);
+        var accessToken = jwtTokenGenerator.GenerateToken(user);
+        var refreshToken = await refreshTokenService.IssueAsync(user.Id, cancellationToken);
+        return AuthenticationResultFactory.Create(user, accessToken, refreshToken);
     }
 }

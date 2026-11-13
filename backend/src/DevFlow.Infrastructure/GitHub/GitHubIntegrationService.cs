@@ -22,7 +22,10 @@ public sealed class GitHubIntegrationService(HttpClient httpClient, IOptions<Git
 
             using var response = await httpClient.SendAsync(request, ct);
 
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null;
+            }
 
             response.EnsureSuccessStatusCode();
 

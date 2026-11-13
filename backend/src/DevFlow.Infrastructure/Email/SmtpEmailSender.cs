@@ -7,6 +7,7 @@ using MimeKit;
 
 namespace DevFlow.Infrastructure.Email;
 
+/// <summary>Delivers email over SMTP with retries. Used by <see cref="EmailDispatcherService"/>, not by requests.</summary>
 public sealed class SmtpEmailSender(IOptions<EmailSettings> options, ILogger<SmtpEmailSender> logger) : IEmailNotificationSender
 {
     private const int MaxAttempts = 3;
@@ -32,7 +33,11 @@ public sealed class SmtpEmailSender(IOptions<EmailSettings> options, ILogger<Smt
             {
                 using var client = new SmtpClient();
                 await client.ConnectAsync(_settings.Host, _settings.Port, _settings.UseSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None, ct);
-                if (!string.IsNullOrWhiteSpace(_settings.Username)) await client.AuthenticateAsync(_settings.Username, _settings.Password, ct);
+                if (!string.IsNullOrWhiteSpace(_settings.Username))
+                {
+                    await client.AuthenticateAsync(_settings.Username, _settings.Password, ct);
+                }
+
                 await client.SendAsync(message, ct);
                 await client.DisconnectAsync(true, ct);
                 return;
