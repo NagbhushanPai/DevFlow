@@ -74,7 +74,7 @@ public sealed class IssueManagementService(
     public const int TitleMaxLength = 300;
     public const int DescriptionMaxLength = 5000;
     public const int CommentMaxLength = 5000;
-    private const int MaxIssueNumberAttempts = 5;
+    private const int MaxIssueNumberAttempts = 10;
 
     private Guid UserId => authorization.CurrentUserId;
 
@@ -330,6 +330,8 @@ public sealed class IssueManagementService(
             }
             catch (DbUpdateConcurrencyException ex) when (attempt < MaxIssueNumberAttempts)
             {
+                // Small random backoff so a burst of concurrent creators doesn't collide on every retry.
+                await Task.Delay(Random.Shared.Next(5, 20 * attempt), ct);
                 foreach (var entry in ex.Entries)
                 {
                     await entry.ReloadAsync(ct);
