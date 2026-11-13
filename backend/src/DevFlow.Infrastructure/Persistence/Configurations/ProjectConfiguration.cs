@@ -33,6 +33,9 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 
         builder.HasIndex(project => new { project.OrganizationId, project.Name });
 
-        builder.Property(project => project.NextIssueNumber).IsRequired();
+        // Optimistic concurrency: concurrent issue creation retries instead of reusing a number.
+        builder.Property(project => project.NextIssueNumber)
+            .IsRequired()
+            .IsConcurrencyToken();
     }
 }

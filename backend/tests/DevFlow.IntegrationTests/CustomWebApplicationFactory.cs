@@ -1,5 +1,5 @@
-using DevFlow.Infrastructure.Persistence;
 using DevFlow.Application.Common.Interfaces;
+using DevFlow.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Collections.Generic;
 
 namespace DevFlow.IntegrationTests;
 
@@ -21,6 +20,13 @@ public sealed class CustomWebApplicationFactory
         IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        // UseSetting values are visible while Program.cs builds its services (ConfigureAppConfiguration is
+        // applied too late for values read before builder.Build()).
+        builder.UseSetting("ConnectionStrings:DefaultConnection", "Server=(unused-in-tests);Database=DevFlowTests");
+        builder.UseSetting("HttpsRedirection:Enabled", "false");
+        builder.UseSetting("RateLimiting:PermitLimitPerMinute", "100000");
+        builder.UseSetting("RateLimiting:AuthPermitLimitPerMinute", "100000");
 
         builder.ConfigureAppConfiguration((context, config) =>
         {

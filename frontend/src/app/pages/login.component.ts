@@ -1,9 +1,0 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../core/auth.service';
-import { NotificationService } from '../core/notification.service';
-import { RealtimeService } from '../core/realtime.service';
-@Component({ standalone: true, imports: [CommonModule, FormsModule, RouterLink], template: `<section class="auth-card"><h1>Welcome back</h1><p>Sign in to DevFlow.</p><form (ngSubmit)="submit()"><label>Email<input name="email" type="email" [(ngModel)]="email" required></label><label>Password<input name="password" type="password" [(ngModel)]="password" required></label><p class="error" *ngIf="error()">{{ error() }}</p><button type="submit" [disabled]="busy()">{{ busy() ? 'Signing in…' : 'Sign in' }}</button></form><p class="auth-link">New to DevFlow? <a routerLink="/register">Create an account</a></p></section>` })
-export class LoginComponent { private readonly auth = inject(AuthService); private readonly router = inject(Router); private readonly notifications = inject(NotificationService); private readonly realtime = inject(RealtimeService); email = ''; password = ''; readonly busy = signal(false); readonly error = signal(''); submit() { this.busy.set(true); this.error.set(''); this.auth.login(this.email, this.password).subscribe({ next: () => { this.notifications.load(); void this.realtime.connect(); void this.router.navigate(['/dashboard']); }, error: () => { this.error.set('Invalid email or password.'); this.busy.set(false); } }); } }

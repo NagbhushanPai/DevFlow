@@ -1,146 +1,57 @@
+using DevFlow.Application.Authentication.Commands.Login;
+using DevFlow.Application.Common.Exceptions;
 using DevFlow.Application.Common.Interfaces;
 using DevFlow.Application.Common.Models;
-using DevFlow.Application.Authentication.Commands.Login;
 using Moq;
 
 namespace DevFlow.UnitTests.Application.Authentication;
 
 public sealed class LoginCommandHandlerTests
 {
-    private readonly Mock<IIdentityService> _identityServiceMock;
-    private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock;
+    private readonly Mock<IIdentityService> _identity = new();
+    private readonly Mock<IJwtTokenGenerator> _jwt = new();
+    private readonly Mock<IRefreshTokenService> _refreshTokens = new();
     private readonly LoginCommandHandler _handler;
+    private readonly UserInfo _user = new(Guid.NewGuid(), "Test", "Developer", "test@devflow.com", ["Developer"]);
 
     public LoginCommandHandlerTests()
     {
-        _identityServiceMock = new Mock<IIdentityService>();
-        _jwtTokenGeneratorMock = new Mock<IJwtTokenGenerator>();
-
-        _handler = new LoginCommandHandler(
-            _identityServiceMock.Object,
-            _jwtTokenGeneratorMock.Object);
+        _handler = new LoginCommandHandler(_identity.Object, _jwt.Object, _refreshTokens.Object);
+        _identity.Setup(s => s.GetUserByEmailAsync(_user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(_user);
     }
 
     [Fact]
-    public async Task Handle_WhenCredentialsAreValid_ReturnsAuthenticationResult()
+    public async Task Handle_WhenCredentialsAreValid_ReturnsAccessAndRefreshTokens()
     {
-        // Arrange
-        var user = new UserInfo(
-            Guid.NewGuid(),
-            "Test",
-            "Developer",
-            "test@devflow.com",
-            ["Developer"]);
+        _identity.Setup(s => s.CheckPasswordAsync(_user.Id, "Test@1234", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _jwt.Setup(g => g.GenerateToken(_user)).Returns(new JwtTokenResult("access", DateTime.UtcNow.AddMinutes(15)));
+        _refreshTokens.Setup(r => r.IssueAsync(_user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefreshTokenResult("refresh", DateTime.UtcNow.AddDays(7)));
 
-        var command = new LoginCommand(
-            user.Email,
-            "Test@123");
+        var result = await _handler.Handle(new LoginCommand(_user.Email, "Test@1234"), CancellationToken.None);
 
-        _identityServiceMock
-            .Setup(service =>
-                service.GetUserByEmailAsync(
-                    command.Email,
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
-
-        _identityServiceMock
-            .Setup(service =>
-                service.CheckPasswordAsync(
-                    user.Id,
-                    command.Password,
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
-        _jwtTokenGeneratorMock
-            .Setup(generator =>
-                generator.GenerateToken(user))
-            .Returns(
-                new JwtTokenResult(
-                    "test-token",
-                    DateTime.UtcNow.AddHours(1)));
-
-        // Act
-        var result = await _handler.Handle(
-            command,
-            CancellationToken.None);
-
-        // Assert
-        Assert.Equal(user.Id, result.UserId);
-        Assert.Equal(user.Email, result.Email);
+        Assert.Equal(_user.Id, result.UserId);
+        Assert.Equal("access", result.Token);
+        Assert.Equal("refresh", result.RefreshToken);
         Assert.Contains("Developer", result.Roles);
-        Assert.Equal("test-token", result.Token);
     }
 
+    [Fact]
+    public async Task Handle_WhenUserDoesNotExist_ThrowsInvalidCredentials()
+    {
+        _identity.Setup(s => s.GetUserByEmailAsync("unknown@devflow.com", It.IsAny<CancellationToken>())).ReturnsAsync((UserInfo?)null);
+
+        await Assert.ThrowsAsync<InvalidCredentialsException>(() =>
+            _handler.Handle(new LoginCommand("unknown@devflow.com", "Test@1234"), CancellationToken.None));
+    }
 
     [Fact]
-public async Task Handle_WhenUserDoesNotExist_ThrowsInvalidCredentialsException()
-{
-    // Arrange
-    var command = new LoginCommand(
-        "unknown@devflow.com",
-        "Test@123");
+    public async Task Handle_WhenPasswordIsInvalidOrLockedOut_ThrowsInvalidCredentialsAndIssuesNoTokens()
+    {
+        _identity.Setup(s => s.CheckPasswordAsync(_user.Id, "WrongPassword", It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-    _identityServiceMock
-        .Setup(service =>
-            service.GetUserByEmailAsync(
-                command.Email,
-                It.IsAny<CancellationToken>()))
-        .ReturnsAsync((UserInfo?)null);
-
-    // Act
-    var action = async () =>
-        await _handler.Handle(
-            command,
-            CancellationToken.None);
-
-    // Assert
-    await Assert.ThrowsAsync<
-        DevFlow.Application.Common.Exceptions.InvalidCredentialsException>(
-            action);
-}
-
-
-
-
-[Fact]
-public async Task Handle_WhenPasswordIsInvalid_ThrowsInvalidCredentialsException()
-{
-    // Arrange
-    var user = new UserInfo(
-        Guid.NewGuid(),
-        "Test",
-        "Developer",
-        "test@devflow.com",
-        ["Developer"]);
-
-    var command = new LoginCommand(
-        user.Email,
-        "WrongPassword");
-
-    _identityServiceMock
-        .Setup(service =>
-            service.GetUserByEmailAsync(
-                command.Email,
-                It.IsAny<CancellationToken>()))
-        .ReturnsAsync(user);
-
-    _identityServiceMock
-        .Setup(service =>
-            service.CheckPasswordAsync(
-                user.Id,
-                command.Password,
-                It.IsAny<CancellationToken>()))
-        .ReturnsAsync(false);
-
-    // Act
-    var action = async () =>
-        await _handler.Handle(
-            command,
-            CancellationToken.None);
-
-    // Assert
-    await Assert.ThrowsAsync<
-        DevFlow.Application.Common.Exceptions.InvalidCredentialsException>(
-            action);
-}
+        await Assert.ThrowsAsync<InvalidCredentialsException>(() =>
+            _handler.Handle(new LoginCommand(_user.Email, "WrongPassword"), CancellationToken.None));
+        _refreshTokens.Verify(r => r.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

@@ -1,10 +1,12 @@
-using DevFlow.Infrastructure.Persistence;
 using DevFlow.Domain.Enums;
+using DevFlow.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DevFlow.Admin.Controllers;
 
+/// <summary>Admin dashboard. Access is restricted to the global Admin role by the fallback policy in Program.cs.</summary>
 public sealed class AdminController(ApplicationDbContext db) : Controller
 {
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -19,6 +21,7 @@ public sealed class AdminController(ApplicationDbContext db) : Controller
         return View(model);
     }
 
+    [AllowAnonymous]
     public IActionResult Error() => View();
 
     [HttpGet]

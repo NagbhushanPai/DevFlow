@@ -1,91 +1,67 @@
-using DevFlow.Application.Organizations.Commands.CreateOrganization;
-using DevFlow.Application.Organizations.Queries.GetOrganizations;
 using DevFlow.Application.Organizations;
 using DevFlow.Application.Organizations.DTOs;
-using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DevFlow.API.Controllers;
 
-[ApiController]
 [Route("api/organizations")]
-[Authorize]
-public sealed class OrganizationsController : ControllerBase
+public sealed class OrganizationsController(IOrganizationManagementService organizations) : BaseApiController
 {
-    private readonly ISender _sender;
-    private readonly IOrganizationManagementService _organizationService;
-
-    public OrganizationsController(
-        ISender sender,
-        IOrganizationManagementService organizationService)
-    {
-        _sender = sender;
-        _organizationService = organizationService;
-    }
-
     [HttpPost]
-    public async Task<ActionResult<Guid>> Create(CreateOrganizationCommand command, CancellationToken cancellationToken)
+    public async Task<ActionResult<Guid>> Create(CreateOrganizationRequest request, CancellationToken ct)
     {
-        var id = await _sender.Send(command, cancellationToken);
-        return StatusCode(StatusCodes.Status201Created, id);
+        var id = await organizations.CreateOrganizationAsync(request.Name, request.Description, ct);
+        return CreatedAtAction(nameof(GetById), new { organizationId = id }, id);
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<object>>> Get(CancellationToken cancellationToken)
-    {
-        var orgs = await _sender.Send(new GetOrganizationsQuery(), cancellationToken);
-        return Ok(orgs);
-    }
+    public async Task<ActionResult<IReadOnlyList<OrganizationDto>>> Get(CancellationToken ct) =>
+        Ok(await organizations.GetMyOrganizationsAsync(ct));
 
     [HttpGet("{organizationId:guid}")]
-    public async Task<ActionResult<OrganizationDto>> GetById(Guid organizationId, CancellationToken cancellationToken) =>
-        Ok(await _organizationService.GetOrganizationAsync(organizationId, cancellationToken));
+    public async Task<ActionResult<OrganizationDto>> GetById(Guid organizationId, CancellationToken ct) =>
+        Ok(await organizations.GetOrganizationAsync(organizationId, ct));
 
     [HttpPut("{organizationId:guid}")]
-    public async Task<IActionResult> Update(Guid organizationId, UpdateOrganizationRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Update(Guid organizationId, UpdateOrganizationRequest request, CancellationToken ct)
     {
-        await _organizationService.UpdateOrganizationAsync(organizationId, request.Name, request.Description, cancellationToken);
+        await organizations.UpdateOrganizationAsync(organizationId, request.Name, request.Description, ct);
         return NoContent();
     }
 
     [HttpDelete("{organizationId:guid}")]
-    public async Task<IActionResult> Delete(Guid organizationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid organizationId, CancellationToken ct)
     {
-        await _organizationService.DeleteOrganizationAsync(organizationId, cancellationToken);
+        await organizations.DeleteOrganizationAsync(organizationId, ct);
         return NoContent();
     }
 
     [HttpGet("{organizationId:guid}/members")]
-    public async Task<ActionResult<IReadOnlyList<OrganizationMemberDto>>> GetMembers(Guid organizationId, CancellationToken cancellationToken) =>
-        Ok(await _organizationService.GetMembersAsync(organizationId, cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<OrganizationMemberDto>>> GetMembers(Guid organizationId, CancellationToken ct) =>
+        Ok(await organizations.GetMembersAsync(organizationId, ct));
 
     [HttpPut("{organizationId:guid}/members/{userId:guid}")]
-    public async Task<IActionResult> AddMember(Guid organizationId, Guid userId, OrganizationMemberRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> AddMember(Guid organizationId, Guid userId, OrganizationMemberRequest request, CancellationToken ct)
     {
-        await _organizationService.AddMemberAsync(organizationId, userId, request.Role, cancellationToken);
+        await organizations.AddMemberAsync(organizationId, userId, request.Role, ct);
         return NoContent();
     }
 
     [HttpDelete("{organizationId:guid}/members/{userId:guid}")]
-    public async Task<IActionResult> RemoveMember(Guid organizationId, Guid userId, CancellationToken cancellationToken)
+    public async Task<IActionResult> RemoveMember(Guid organizationId, Guid userId, CancellationToken ct)
     {
-        await _organizationService.RemoveMemberAsync(organizationId, userId, cancellationToken);
+        await organizations.RemoveMemberAsync(organizationId, userId, ct);
         return NoContent();
     }
 
     [HttpGet("{organizationId:guid}/teams")]
-    public async Task<ActionResult<IReadOnlyList<TeamDto>>> GetTeams(Guid organizationId, CancellationToken cancellationToken) =>
-        Ok(await _organizationService.GetTeamsAsync(organizationId, cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<TeamDto>>> GetTeams(Guid organizationId, CancellationToken ct) =>
+        Ok(await organizations.GetTeamsAsync(organizationId, ct));
 
     [HttpPost("{organizationId:guid}/teams")]
-    public async Task<ActionResult<TeamDto>> CreateTeam(Guid organizationId, CreateTeamRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<TeamDto>> CreateTeam(Guid organizationId, CreateTeamRequest request, CancellationToken ct)
     {
-        var team = await _organizationService.CreateTeamAsync(organizationId, request.Name, request.Description, cancellationToken);
+        var team = await organizations.CreateTeamAsync(organizationId, request.Name, request.Description, ct);
         return CreatedAtAction(nameof(TeamsController.GetById), "Teams", new { teamId = team.Id }, team);
     }
 }
-
-public sealed record UpdateOrganizationRequest(string Name, string? Description);
-public sealed record OrganizationMemberRequest(string Role);
-public sealed record CreateTeamRequest(string Name, string? Description);

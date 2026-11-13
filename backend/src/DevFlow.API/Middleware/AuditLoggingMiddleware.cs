@@ -1,37 +1,59 @@
-using DevFlow.Application.Common.Interfaces;
+using System.Security.Claims;
 using DevFlow.Domain.Entities;
+using DevFlow.Infrastructure.Auditing;
 
 namespace DevFlow.API.Middleware;
 
-public sealed class AuditLoggingMiddleware(RequestDelegate next)
+/// <summary>
+/// Records every state-changing request. Entries are queued and written in the background, so this adds no
+/// database work to the request and cannot affect the request's own DbContext.
+/// </summary>
+public sealed class AuditLoggingMiddleware(RequestDelegate next, AuditLogQueue queue, ILogger<AuditLoggingMiddleware> logger)
 {
-    public async Task InvokeAsync(HttpContext context, IApplicationDbContext db)
+    public async Task InvokeAsync(HttpContext context)
     {
-        await next(context);
-
-        if (HttpMethods.IsGet(context.Request.Method) ||
-            HttpMethods.IsHead(context.Request.Method) ||
-            HttpMethods.IsOptions(context.Request.Method) ||
-            context.Request.Path.StartsWithSegments("/health") ||
-            context.Request.Path.StartsWithSegments("/swagger"))
+        try
         {
-            return;
+            await next(context);
         }
-
-        var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        Guid? actorId = Guid.TryParse(userId, out var parsedUserId) ? parsedUserId : null;
-        db.AuditLogs.Add(new AuditLog
+        finally
         {
-            UserId = actorId,
-            Action = $"{context.Request.Method} {context.Request.Path}",
+            if (ShouldAudit(context.Request))
+            {
+                Enqueue(context);
+            }
+        }
+    }
+
+    private static bool ShouldAudit(HttpRequest request) =>
+        !(HttpMethods.IsGet(request.Method)
+          || HttpMethods.IsHead(request.Method)
+          || HttpMethods.IsOptions(request.Method)
+          || request.Path.StartsWithSegments("/health")
+          || request.Path.StartsWithSegments("/swagger")
+          || request.Path.StartsWithSegments("/hubs"));
+
+    private void Enqueue(HttpContext context)
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var entry = new AuditLog
+        {
+            UserId = Guid.TryParse(userId, out var parsed) ? parsed : null,
+            Action = Truncate($"{context.Request.Method} {context.Request.Path}", 100),
             HttpMethod = context.Request.Method,
-            Path = context.Request.Path,
+            Path = Truncate(context.Request.Path.ToString(), 500),
             StatusCode = context.Response.StatusCode,
             IpAddress = context.Connection.RemoteIpAddress?.ToString(),
-            UserAgent = context.Request.Headers.UserAgent.ToString(),
+            UserAgent = Truncate(context.Request.Headers.UserAgent.ToString(), 500),
             TraceId = context.TraceIdentifier,
-            CreatedAtUtc = DateTime.UtcNow
-        });
-        await db.SaveChangesAsync(context.RequestAborted);
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+
+        if (!queue.TryEnqueue(entry))
+        {
+            logger.LogWarning("Audit queue is full; dropped entry for {Action}.", entry.Action);
+        }
     }
+
+    private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max];
 }

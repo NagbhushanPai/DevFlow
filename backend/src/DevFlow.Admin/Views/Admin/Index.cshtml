@@ -8,7 +8,13 @@
     <link rel="stylesheet" href="/css/admin.css" />
 </head>
 <body>
-    <header><h1>DevFlow Administration</h1></header>
+    <header>
+        <h1>DevFlow Administration</h1>
+        <form asp-controller="Account" asp-action="Logout" method="post">
+            <span>@User.Identity?.Name</span>
+            <button type="submit">Sign out</button>
+        </form>
+    </header>
     <main>
         <section class="cards">
             <article><strong>@Model.Organizations</strong><span>Organizations</span></article>

@@ -1,3 +1,19 @@
+# Local demo stack. Infrastructure ports are bound to 127.0.0.1 only, so SQL Server, Redis and Azurite are
+# reachable from this machine (for `dotnet run`) but not from the network.
+#
+#   cp .env.example .env   # then fill in the secrets
+#   docker compose up --build
+#
+# App: http://localhost:4200   API/Swagger: http://localhost:8080   Admin: http://localhost:8081
+
+x-backend-env: &backend-env
+  ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=DevFlowDb;User Id=sa;Password=${DEVFLOW_SQL_PASSWORD};TrustServerCertificate=True"
+  ConnectionStrings__Redis: "redis:6379,password=${DEVFLOW_REDIS_PASSWORD}"
+  JwtSettings__Secret: "${DEVFLOW_JWT_SECRET:?Set DEVFLOW_JWT_SECRET in .env}"
+  AzureStorage__ConnectionString: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+  HttpsRedirection__Enabled: "false"
+  ForwardedHeaders__Enabled: "true"
+
 services:
   sql:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -5,7 +21,7 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${DEVFLOW_SQL_PASSWORD:?Set DEVFLOW_SQL_PASSWORD in .env}"
     ports:
-      - "1433:1433"
+      - "127.0.0.1:${DEVFLOW_SQL_PORT:-1433}:1433"
     volumes:
       - devflow-sql:/var/opt/mssql
     healthcheck:
@@ -16,36 +32,86 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${DEVFLOW_REDIS_PASSWORD:?Set DEVFLOW_REDIS_PASSWORD in .env}"]
+    environment:
+      REDISCLI_AUTH: "${DEVFLOW_REDIS_PASSWORD}"
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${DEVFLOW_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  azurite:
+    # Local Azure Blob Storage emulator for attachments (private container).
+    image: mcr.microsoft.com/azure-storage/azurite:3.34.0
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--location", "/data", "--skipApiVersionCheck"]
+    ports:
+      - "127.0.0.1:${DEVFLOW_AZURITE_PORT:-10000}:10000"
+    volumes:
+      - devflow-blobs:/data
+
+  # One-shot job: applies EF migrations and seeds roles + demo data, then exits.
+  # The API itself never migrates, so scaling it to several replicas is safe.
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["--migrate"]
+    environment:
+      <<: *backend-env
+      Seed__DemoData: "${DEVFLOW_SEED_DEMO_DATA:-true}"
+    depends_on:
+      sql:
+        condition: service_healthy
+    restart: "no"
+    healthcheck:
+      disable: true
 
   api:
     build:
       context: .
       dockerfile: backend/Dockerfile
     environment:
+      <<: *backend-env
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
-      Database__ApplyMigrations: "true"
-      ConnectionStrings__DefaultConnection: "Server=sql,1433;Database=DevFlowDb;User Id=sa;Password=${DEVFLOW_SQL_PASSWORD};TrustServerCertificate=True"
-      JwtSettings__Secret: "${DEVFLOW_JWT_SECRET:?Set DEVFLOW_JWT_SECRET in .env}"
-      ConnectionStrings__Redis: "redis:6379"
       Cors__AllowedOrigins__0: "http://localhost:4200"
     ports:
-      - "8080:8080"
+      - "${DEVFLOW_API_PORT:-8080}:8080"
     depends_on:
-      sql:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      azurite:
         condition: service_started
+
+  admin:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        PROJECT: DevFlow.Admin
+    environment:
+      <<: *backend-env
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+    ports:
+      - "${DEVFLOW_ADMIN_PORT:-8081}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   frontend:
     build:
       context: frontend
       dockerfile: Dockerfile
     ports:
-      - "4200:80"
+      - "${DEVFLOW_WEB_PORT:-4200}:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   devflow-sql:
+  devflow-blobs:

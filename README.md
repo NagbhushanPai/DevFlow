@@ -643,8 +643,16 @@ POST /api/auth/register
 
 POST /api/auth/login
 
-POST /api/auth/refresh-token
+POST /api/auth/refresh   (uses the HttpOnly refresh cookie; rotates it)
+
+POST /api/auth/logout    (revokes the refresh token)
 ```
+
+Access tokens are short-lived (15 minutes) and returned in the response body; the SPA keeps
+them in memory only. Refresh tokens are opaque, stored hashed, sent as an
+`HttpOnly; SameSite=Strict; Path=/api/auth` cookie, rotated on every use, and replaying a
+rotated token revokes all of that user's sessions. Accounts lock for 15 minutes after five
+failed sign-in attempts.
 
 ## Organizations
 
@@ -1036,28 +1044,30 @@ remain to be added.
 
 ## Run a local demo with Docker
 
-The repository includes a complete Docker Compose demo stack: Angular, ASP.NET Core,
-SQL Server, and Redis. The API applies EF Core migrations automatically when the
-Compose stack starts.
+The repository includes a complete Docker Compose demo stack: Angular (nginx), the
+ASP.NET Core API, the Admin portal, SQL Server, Redis and Azurite (local Azure Blob
+Storage). A one-shot `migrate` service applies EF Core migrations and seeds data before
+the API starts, so the API itself never migrates and can safely run as several replicas.
 
-1. Copy `.env.example` to `.env`.
-2. Replace both values in `.env` with local secrets. The SQL Server password must
-   satisfy SQL Server complexity requirements, and the JWT secret should be at least
-   32 characters.
-3. Start the stack:
+1. Copy `.env.example` to `.env` and fill in every value. The SQL Server password must
+   satisfy SQL Server complexity requirements and the JWT secret must be at least
+   32 characters (the API refuses to start otherwise).
+2. Start the stack:
 
    ```bash
-   docker compose up --build
+   docker compose up -d --build
    ```
 
-4. Open [http://localhost:4200](http://localhost:4200). The API health endpoint is
-   available at [http://localhost:8080/health](http://localhost:8080/health). Swagger
-   is available at [http://localhost:8080/swagger](http://localhost:8080/swagger) when
-   `ASPNETCORE_ENVIRONMENT=Development` is set in `.env`.
+3. Open [http://localhost:4200](http://localhost:4200). The API health endpoint is
+   [http://localhost:8080/health](http://localhost:8080/health) and the Admin portal is
+   [http://localhost:8081](http://localhost:8081) (global `Admin` role only). Swagger is
+   available at `/swagger` when `ASPNETCORE_ENVIRONMENT=Development`.
 
-Register a demo user from the application, then create an organization, project, and
-issues. The frontend container proxies `/api` and `/hubs` to the API, so the browser
-only needs the frontend URL.
+With `DEVFLOW_SEED_DEMO_DATA=true` the seeder creates demo users, an organization, a
+project, a sprint and issues (see `DatabaseInitializer` in
+`backend/src/DevFlow.Infrastructure/Persistence`). A more detailed local guide with the
+demo credentials is kept in an untracked `HOW_TO_RUN.md`. The frontend container proxies
+`/api` and `/hubs` to the API, so the browser only needs the frontend URL.
 
 Stop the stack with:
 
@@ -1105,18 +1115,24 @@ Restore dependencies:
 dotnet restore
 ```
 
-Configure the database connection.
-
-Apply Entity Framework migrations:
+Start SQL Server, Redis and Azurite (bound to 127.0.0.1):
 
 ```bash
-dotnet ef database update
+docker compose up -d sql redis azurite
 ```
 
-Run the backend:
+Configure secrets with `dotnet user-secrets` in `src/DevFlow.API` (connection strings,
+`JwtSettings:Secret`, `AzureStorage:ConnectionString=UseDevelopmentStorage=true`), and set
+`Database:ApplyMigrations=true` / `Seed:DemoData=true` for local development. Then run:
 
 ```bash
-dotnet run --project src/DevFlow.API
+dotnet run --project src/DevFlow.API --launch-profile http
+```
+
+To migrate without starting the web server (as the Compose `migrate` job does):
+
+```bash
+dotnet run --project src/DevFlow.API -- --migrate
 ```
 
 ---
@@ -1158,6 +1174,13 @@ JwtSettings__Secret
 JwtSettings__Issuer
 JwtSettings__Audience
 JwtSettings__ExpirationInMinutes
+JwtSettings__RefreshTokenExpirationInDays
+Database__ApplyMigrations
+Seed__DemoData
+HttpsRedirection__Enabled
+ForwardedHeaders__Enabled
+RateLimiting__PermitLimitPerMinute
+RateLimiting__AuthPermitLimitPerMinute
 AzureStorage__ConnectionString
 AzureStorage__ContainerName
 EmailSettings__Host
@@ -1181,9 +1204,12 @@ docker compose up --build
 
 The Compose environment starts:
 
-- SQL Server on port `1433`
-- Redis on port `6379`
+- SQL Server on `127.0.0.1:1433`
+- Redis (password protected) on `127.0.0.1:6379`
+- Azurite blob storage on `127.0.0.1:10000`
+- `migrate` one-shot job (migrations + seeding)
 - ASP.NET Core API on port `8080`
+- Admin portal on port `8081`
 - Angular/Nginx frontend on port `4200`
 
 The API uses the Redis service when running through Compose and falls back to
@@ -1249,7 +1275,6 @@ Potential future improvements include:
 - OAuth authentication
 - Microsoft authentication
 - GitHub authentication
-- Refresh token rotation
 - Custom project workflows
 - Webhooks
 - Advanced analytics

@@ -4,9 +4,11 @@ namespace DevFlow.Domain.Entities;
 
 public class Attachment : BaseEntity
 {
+    /// <summary>Sanitised original file name, shown to users and used for downloads.</summary>
     public string FileName { get; set; } = string.Empty;
 
-    public string FileUrl { get; set; } = string.Empty;
+    /// <summary>Opaque key of the file in private storage (not a public URL).</summary>
+    public string StorageKey { get; set; } = string.Empty;
 
     public string ContentType { get; set; } = string.Empty;
 

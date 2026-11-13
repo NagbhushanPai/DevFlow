@@ -1,246 +1,150 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Net.Http.Headers;
+using static DevFlow.IntegrationTests.TestApi;
 
 namespace DevFlow.IntegrationTests.Authentication;
 
-public sealed class AuthEndpointsTests
-    : IClassFixture<CustomWebApplicationFactory>
+public sealed class AuthEndpointsTests(CustomWebApplicationFactory factory) : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly HttpClient _client;
-
-    public AuthEndpointsTests(
-        CustomWebApplicationFactory factory)
+    [Fact]
+    public async Task Register_ReturnsAccessTokenInBody_AndRefreshTokenOnlyAsHttpOnlyCookie()
     {
-        _client = factory.CreateClient();
+        var client = factory.CreateClient();
+        var email = $"register-{Guid.NewGuid():N}@devflow.test";
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new { FirstName = "Reg", LastName = "User", Email = email, Password });
+        var body = await response.Content.ReadAsStringAsync();
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.Equal(email, result.Email);
+        Assert.Contains("Developer", result.Roles);
+        Assert.False(string.IsNullOrWhiteSpace(result.Token));
+        Assert.DoesNotContain("refreshToken", body, StringComparison.OrdinalIgnoreCase);
+
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("devflow_refresh="));
+        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=strict", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("path=/api/auth", cookie, StringComparison.OrdinalIgnoreCase);
     }
 
-    private sealed record AuthenticationResponse(
-    Guid UserId,
-    string FirstName,
-    string LastName,
-    string Email,
-    IReadOnlyCollection<string> Roles,
-    string Token,
-    DateTime ExpiresAtUtc);
+    [Fact]
+    public async Task Register_WithWeakPassword_ReturnsValidationErrors()
+    {
+        var response = await factory.CreateClient().PostAsJsonAsync("/api/auth/register",
+            new { FirstName = "Weak", LastName = "User", Email = $"weak-{Guid.NewGuid():N}@devflow.test", Password = "password" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("uppercase", await response.Content.ReadAsStringAsync());
+    }
 
     [Fact]
-    public async Task Register_WithValidRequest_ReturnsOk()
+    public async Task Register_WithDuplicateEmail_ReturnsBadRequest()
     {
-        // Arrange
-        var request = new
-        {
-            FirstName = "Integration",
-            LastName = "User",
-            Email = $"integration-{Guid.NewGuid()}@devflow.com",
-            Password = "Test@123"
-        };
+        var user = await RegisterAsync(factory, "dup");
+        var response = await factory.CreateClient().PostAsJsonAsync("/api/auth/register",
+            new { FirstName = "Dup", LastName = "User", Email = user.Email, Password });
 
-        // Act
-        var response = await _client.PostAsJsonAsync(
-            "/api/auth/register",
-            request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 
-        // Assert
+    [Fact]
+    public async Task Login_WithValidCredentials_ReturnsOk()
+    {
+        var user = await RegisterAsync(factory, "login");
+        var response = await factory.CreateClient().PostAsJsonAsync("/api/auth/login", new { user.Email, Password });
+
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Login_WithInvalidPassword_ReturnsUnauthorized()
+    {
+        var user = await RegisterAsync(factory, "invalid");
+        var response = await factory.CreateClient().PostAsJsonAsync("/api/auth/login", new { user.Email, Password = "WrongPassword1!" });
 
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 
     [Fact]
-public async Task Register_WithValidRequest_ReturnsAuthenticationResult()
-{
-    // Arrange
-    var email =
-        $"integration-{Guid.NewGuid()}@devflow.com";
-
-    var request = new
+    public async Task Login_IsLockedOutAfterRepeatedFailures_EvenWithCorrectPassword()
     {
-        FirstName = "Integration",
-        LastName = "User",
-        Email = email,
-        Password = "Test@123"
-    };
+        var user = await RegisterAsync(factory, "lockout");
+        var client = factory.CreateClient();
 
-    // Act
-    var response = await _client.PostAsJsonAsync(
-        "/api/auth/register",
-        request);
-
-    var result =
-        await response.Content
-            .ReadFromJsonAsync<AuthenticationResponse>();
-
-    // Assert
-    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-    Assert.NotNull(result);
-
-    Assert.Equal(email, result.Email);
-
-    Assert.Contains(
-        "Developer",
-        result.Roles);
-
-    Assert.False(
-        string.IsNullOrWhiteSpace(result.Token));
-}
-
-
-
-
-[Fact]
-public async Task Login_WithValidCredentials_ReturnsOk()
-{
-    // Arrange
-    var email =
-        $"login-{Guid.NewGuid()}@devflow.com";
-
-    var password = "Test@123";
-
-    var registerRequest = new
-    {
-        FirstName = "Login",
-        LastName = "User",
-        Email = email,
-        Password = password
-    };
-
-    await _client.PostAsJsonAsync(
-        "/api/auth/register",
-        registerRequest);
-
-    var loginRequest = new
-    {
-        Email = email,
-        Password = password
-    };
-
-    // Act
-    var response = await _client.PostAsJsonAsync(
-        "/api/auth/login",
-        loginRequest);
-
-    // Assert
-    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-}
-
-
-
-[Fact]
-public async Task Login_WithInvalidPassword_ReturnsUnauthorized()
-{
-    // Arrange
-    var email =
-        $"invalid-{Guid.NewGuid()}@devflow.com";
-
-    await _client.PostAsJsonAsync(
-        "/api/auth/register",
-        new
+        for (var i = 0; i < 5; i++)
         {
-            FirstName = "Invalid",
-            LastName = "Login",
-            Email = email,
-            Password = "Test@123"
-        });
+            await client.PostAsJsonAsync("/api/auth/login", new { user.Email, Password = "WrongPassword1!" });
+        }
 
-    // Act
-    var response = await _client.PostAsJsonAsync(
-        "/api/auth/login",
-        new
-        {
-            Email = email,
-            Password = "WrongPassword"
-        });
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { user.Email, Password });
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 
-    // Assert
-    Assert.Equal(
-        HttpStatusCode.Unauthorized,
-        response.StatusCode);
-}
-
-
-
-[Fact]
-public async Task Register_WithDuplicateEmail_ReturnsBadRequest()
-{
-    // Arrange
-    var email =
-        $"duplicate-{Guid.NewGuid()}@devflow.com";
-
-    var request = new
+    [Fact]
+    public async Task Refresh_RotatesCookie_AndRejectsReuseOfOldToken()
     {
-        FirstName = "Duplicate",
-        LastName = "User",
-        Email = email,
-        Password = "Test@123"
-    };
+        var client = factory.CreateClient(new() { HandleCookies = false });
+        var email = $"refresh-{Guid.NewGuid():N}@devflow.test";
+        var register = await client.PostAsJsonAsync("/api/auth/register", new { FirstName = "R", LastName = "U", Email = email, Password });
+        var firstCookie = RefreshCookie(register);
 
-    await _client.PostAsJsonAsync(
-        "/api/auth/register",
-        request);
+        var refresh = await PostWithCookieAsync(client, "/api/auth/refresh", firstCookie);
+        Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
+        var refreshed = await refresh.Content.ReadFromJsonAsync<AuthResponse>();
+        Assert.False(string.IsNullOrWhiteSpace(refreshed!.Token));
+        var secondCookie = RefreshCookie(refresh);
+        Assert.NotEqual(firstCookie, secondCookie);
 
-    // Act
-    var response = await _client.PostAsJsonAsync(
-        "/api/auth/register",
-        request);
+        // Replaying the rotated token is treated as theft: it fails and revokes the whole session family.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await PostWithCookieAsync(client, "/api/auth/refresh", firstCookie)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await PostWithCookieAsync(client, "/api/auth/refresh", secondCookie)).StatusCode);
+    }
 
-    // Assert
-    Assert.Equal(
-        HttpStatusCode.BadRequest,
-        response.StatusCode);
-}
+    [Fact]
+    public async Task Logout_RevokesRefreshToken()
+    {
+        var client = factory.CreateClient(new() { HandleCookies = false });
+        var register = await client.PostAsJsonAsync("/api/auth/register",
+            new { FirstName = "L", LastName = "O", Email = $"logout-{Guid.NewGuid():N}@devflow.test", Password });
+        var cookie = RefreshCookie(register);
 
-[Fact]
-public async Task ProtectedEndpoint_WithoutToken_ReturnsUnauthorized()
-{
-    // Act
-    var response = await _client.GetAsync(
-        "/api/test/protected");
+        Assert.Equal(HttpStatusCode.NoContent, (await PostWithCookieAsync(client, "/api/auth/logout", cookie)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await PostWithCookieAsync(client, "/api/auth/refresh", cookie)).StatusCode);
+    }
 
-    // Assert
-    Assert.Equal(
-        HttpStatusCode.Unauthorized,
-        response.StatusCode);
-}
+    [Fact]
+    public async Task Refresh_WithoutCookie_ReturnsUnauthorized() =>
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PostAsync("/api/auth/refresh", null)).StatusCode);
 
+    [Fact]
+    public async Task ProtectedEndpoint_WithoutToken_ReturnsUnauthorized() =>
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().GetAsync("/api/users/me")).StatusCode);
 
-[Fact]
-public async Task ProtectedEndpoint_WithValidToken_ReturnsOk()
-{
-    // Arrange
-    var email =
-        $"protected-{Guid.NewGuid()}@devflow.com";
+    [Fact]
+    public async Task ProtectedEndpoint_WithValidToken_ReturnsCurrentUser()
+    {
+        var user = await RegisterAsync(factory, "me");
+        var me = await user.Client.GetFromJsonAsync<MeResponse>("/api/users/me");
 
-    var registerResponse =
-        await _client.PostAsJsonAsync(
-            "/api/auth/register",
-            new
-            {
-                FirstName = "Protected",
-                LastName = "User",
-                Email = email,
-                Password = "Test@123"
-            });
+        Assert.Equal(user.UserId, me!.Id);
+        Assert.Equal(user.Email, me.Email);
+    }
 
-    var authentication =
-        await registerResponse.Content
-            .ReadFromJsonAsync<AuthenticationResponse>();
+    private sealed record MeResponse(Guid Id, string Email);
 
-    Assert.NotNull(authentication);
+    private static string RefreshCookie(HttpResponseMessage response)
+    {
+        var header = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("devflow_refresh="));
+        return header[..header.IndexOf(';')];
+    }
 
-    _client.DefaultRequestHeaders.Authorization =
-        new AuthenticationHeaderValue(
-            "Bearer",
-            authentication.Token);
-
-    // Act
-    var response = await _client.GetAsync(
-        "/api/test/protected");
-
-    // Assert
-    Assert.Equal(
-        HttpStatusCode.OK,
-        response.StatusCode);
-}
+    private static Task<HttpResponseMessage> PostWithCookieAsync(HttpClient client, string url, string cookie)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Headers.Add("Cookie", cookie);
+        request.Headers.Authorization = null;
+        return client.SendAsync(request);
+    }
 }

@@ -1,9 +1,10 @@
 using DevFlow.Application.Common.Interfaces;
 using DevFlow.Domain.Entities;
 using DevFlow.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace DevFlow.Infrastructure.Persistence;
 
@@ -52,6 +53,25 @@ public class ApplicationDbContext
     public DbSet<Team> Teams => Set<Team>();
 
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
+
+    /// <summary>
+    /// All timestamps are stored as UTC, but SQL Server's datetime2 has no offset, so EF would materialise them
+    /// with <see cref="DateTimeKind.Unspecified"/> and the API would serialise them without a "Z" — browsers
+    /// then read them as local time. Marking every DateTime as UTC on read fixes this everywhere.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<NullableUtcDateTimeConverter>();
+    }
+
+    private sealed class UtcDateTimeConverter() : ValueConverter<DateTime, DateTime>(
+        value => value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime(),
+        value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+
+    private sealed class NullableUtcDateTimeConverter() : ValueConverter<DateTime?, DateTime?>(
+        value => value.HasValue ? (value.Value.Kind == DateTimeKind.Utc ? value : value.Value.ToUniversalTime()) : value,
+        value => value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : value);
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

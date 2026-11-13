@@ -7,71 +7,42 @@ using MediatR;
 
 namespace DevFlow.Application.Authentication.Commands.Register;
 
-public sealed class RegisterCommandHandler
+public sealed class RegisterCommandHandler(
+    IIdentityService identityService,
+    IJwtTokenGenerator jwtTokenGenerator,
+    IRefreshTokenService refreshTokenService)
     : IRequestHandler<RegisterCommand, AuthenticationResult>
 {
-    private readonly IIdentityService _identityService;
-    private readonly IJwtTokenGenerator _jwtTokenGenerator;
-
-    public RegisterCommandHandler(
-        IIdentityService identityService,
-        IJwtTokenGenerator jwtTokenGenerator)
+    public async Task<AuthenticationResult> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        _identityService = identityService;
-        _jwtTokenGenerator = jwtTokenGenerator;
-    }
-
-    public async Task<AuthenticationResult> Handle(
-        RegisterCommand request,
-        CancellationToken cancellationToken)
-    {
-        var userExists =
-            await _identityService.UserExistsByEmailAsync(
-                request.Email,
-                cancellationToken);
-
-        if (userExists)
+        if (await identityService.UserExistsByEmailAsync(request.Email, cancellationToken))
         {
-            throw new RegistrationException(
-                ["A user with this email already exists."]);
+            throw new RegistrationException(["A user with this email already exists."]);
         }
 
-        var creationResult =
-            await _identityService.CreateUserAsync(
-                request.FirstName,
-                request.LastName,
-                request.Email,
-                request.Password,
-                cancellationToken);
-
-        if (!creationResult.Succeeded ||
-            creationResult.UserId is null)
-        {
-            throw new RegistrationException(
-                creationResult.Errors);
-        }
-
-        await _identityService.AddToRoleAsync(
-            creationResult.UserId.Value,
-            Roles.Developer,
+        var creationResult = await identityService.CreateUserAsync(
+            request.FirstName.Trim(),
+            request.LastName.Trim(),
+            request.Email.Trim(),
+            request.Password,
             cancellationToken);
+
+        if (!creationResult.Succeeded || creationResult.UserId is null)
+        {
+            throw new RegistrationException(creationResult.Errors);
+        }
+
+        await identityService.AddToRoleAsync(creationResult.UserId.Value, Roles.Developer, cancellationToken);
 
         var user = new UserInfo(
             creationResult.UserId.Value,
-            request.FirstName,
-            request.LastName,
-            request.Email,
+            request.FirstName.Trim(),
+            request.LastName.Trim(),
+            request.Email.Trim(),
             [Roles.Developer]);
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
-
-        return new AuthenticationResult(
-            user.Id,
-            user.FirstName,
-            user.LastName,
-            user.Email,
-            user.Roles,
-            token.Token,
-            token.ExpiresAtUtc);
+        var accessToken = jwtTokenGenerator.GenerateToken(user);
+        var refreshToken = await refreshTokenService.IssueAsync(user.Id, cancellationToken);
+        return AuthenticationResultFactory.Create(user, accessToken, refreshToken);
     }
 }

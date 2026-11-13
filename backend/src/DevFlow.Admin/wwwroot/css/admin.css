@@ -1,10 +1,22 @@
 body { background: #f5f7fb; color: #172033; font: 16px system-ui, sans-serif; margin: 0; }
-header { background: #172033; color: #fff; padding: 1rem 7%; }
+header { align-items: center; background: #172033; color: #fff; display: flex; justify-content: space-between; padding: 1rem 7%; }
+header form { margin: 0; }
+header button { background: transparent; border: 1px solid #ffffff55; border-radius: 8px; color: #fff; cursor: pointer; padding: .4rem .9rem; }
 main { margin: 2rem auto; max-width: 1100px; padding: 0 1.5rem; }
-.cards { display: grid; gap: 1rem; grid-template-columns: repeat(3, 1fr); }
+.cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 article, .panel { background: #fff; border-radius: 12px; box-shadow: 0 4px 18px #17203312; padding: 1.25rem; }
 article strong, article span { display: block; }
 article strong { font-size: 2rem; }
 .panel { margin-top: 1.5rem; overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; }
 th, td { border-bottom: 1px solid #e4e7ec; padding: .75rem; text-align: left; }
+.muted { color: #5b6476; }
+
+body.login { align-items: center; display: flex; min-height: 100vh; }
+.login-card { background: #fff; border-radius: 12px; box-shadow: 0 4px 18px #17203312; margin: auto; max-width: 360px; padding: 2rem; width: 100%; }
+.login-card h1 { margin: 0 0 .25rem; }
+.login-card label { display: block; font-weight: 600; margin-top: 1rem; }
+.login-card input { border: 1px solid #cfd4dc; border-radius: 8px; box-sizing: border-box; font: inherit; margin-top: .35rem; padding: .6rem .75rem; width: 100%; }
+.login-card button { background: #3b5bdb; border: 0; border-radius: 8px; color: #fff; cursor: pointer; font: inherit; font-weight: 600; margin-top: 1.5rem; padding: .7rem; width: 100%; }
+.errors { color: #c92a2a; }
+.errors ul { margin: 0; padding-left: 1.1rem; }

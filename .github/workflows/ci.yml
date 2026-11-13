@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -13,9 +16,34 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet restore backend/DevFlow.slnx
-      - run: dotnet build backend/DevFlow.slnx --no-restore --configuration Release
-      - run: dotnet test backend/DevFlow.slnx --no-build --configuration Release
+
+      - name: Restore
+        run: dotnet restore backend/DevFlow.slnx
+
+      - name: Check formatting (.editorconfig)
+        run: dotnet format backend/DevFlow.slnx --verify-no-changes --no-restore --exclude backend/src/DevFlow.Infrastructure/Persistence/Migrations
+
+      - name: Build (warnings are errors)
+        run: dotnet build backend/DevFlow.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test backend/DevFlow.slnx --no-build --configuration Release --logger "trx" --collect:"XPlat Code Coverage"
+
+      - name: Fail on vulnerable NuGet packages
+        shell: bash
+        run: |
+          dotnet list backend/DevFlow.slnx package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -qE '\b(High|Critical)\b' vulnerable.txt; then
+            echo "::error::High/critical vulnerable NuGet packages found"; exit 1
+          fi
+
+      - name: Check for pending EF model changes
+        env:
+          ConnectionStrings__DefaultConnection: "Server=localhost;Database=ci;Trusted_Connection=True"
+          JwtSettings__Secret: "ci-design-time-secret-ci-design-time-secret"
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.9
+          dotnet ef migrations has-pending-model-changes --project backend/src/DevFlow.Infrastructure --startup-project backend/src/DevFlow.API --no-build --configuration Release
 
   frontend:
     runs-on: ubuntu-latest
@@ -29,6 +57,21 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci --legacy-peer-deps
+
+      - run: npm ci
+      - name: Audit shipped (runtime) dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build images
+        run: |
+          docker build -f backend/Dockerfile -t devflow-api .
+          docker build -f backend/Dockerfile --build-arg PROJECT=DevFlow.Admin -t devflow-admin .
+          docker build -t devflow-frontend frontend

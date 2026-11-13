@@ -1,51 +1,45 @@
 using DevFlow.Application.Organizations;
 using DevFlow.Application.Organizations.DTOs;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DevFlow.API.Controllers;
 
-[ApiController]
 [Route("api/teams")]
-[Authorize]
-public sealed class TeamsController(IOrganizationManagementService organizationService) : ControllerBase
+public sealed class TeamsController(IOrganizationManagementService organizations) : BaseApiController
 {
     [HttpGet("{teamId:guid}")]
-    public async Task<ActionResult<TeamDto>> GetById(Guid teamId, CancellationToken cancellationToken) =>
-        Ok(await organizationService.GetTeamAsync(teamId, cancellationToken));
+    public async Task<ActionResult<TeamDto>> GetById(Guid teamId, CancellationToken ct) =>
+        Ok(await organizations.GetTeamAsync(teamId, ct));
 
     [HttpPut("{teamId:guid}")]
-    public async Task<IActionResult> Update(Guid teamId, UpdateTeamRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Update(Guid teamId, UpdateTeamRequest request, CancellationToken ct)
     {
-        await organizationService.UpdateTeamAsync(teamId, request.Name, request.Description, cancellationToken);
+        await organizations.UpdateTeamAsync(teamId, request.Name, request.Description, ct);
         return NoContent();
     }
 
     [HttpDelete("{teamId:guid}")]
-    public async Task<IActionResult> Delete(Guid teamId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid teamId, CancellationToken ct)
     {
-        await organizationService.DeleteTeamAsync(teamId, cancellationToken);
+        await organizations.DeleteTeamAsync(teamId, ct);
         return NoContent();
     }
 
     [HttpGet("{teamId:guid}/members")]
-    public async Task<ActionResult<IReadOnlyList<TeamMemberDto>>> GetMembers(Guid teamId, CancellationToken cancellationToken) =>
-        Ok(await organizationService.GetTeamMembersAsync(teamId, cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<TeamMemberDto>>> GetMembers(Guid teamId, CancellationToken ct) =>
+        Ok(await organizations.GetTeamMembersAsync(teamId, ct));
 
     [HttpPut("{teamId:guid}/members/{userId:guid}")]
-    public async Task<IActionResult> AddMember(Guid teamId, Guid userId, TeamMemberRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> AddMember(Guid teamId, Guid userId, TeamMemberRequest request, CancellationToken ct)
     {
-        await organizationService.AddTeamMemberAsync(teamId, userId, request.Role, cancellationToken);
+        await organizations.AddTeamMemberAsync(teamId, userId, request.Role, ct);
         return NoContent();
     }
 
     [HttpDelete("{teamId:guid}/members/{userId:guid}")]
-    public async Task<IActionResult> RemoveMember(Guid teamId, Guid userId, CancellationToken cancellationToken)
+    public async Task<IActionResult> RemoveMember(Guid teamId, Guid userId, CancellationToken ct)
     {
-        await organizationService.RemoveTeamMemberAsync(teamId, userId, cancellationToken);
+        await organizations.RemoveTeamMemberAsync(teamId, userId, ct);
         return NoContent();
     }
 }
-
-public sealed record UpdateTeamRequest(string Name, string? Description);
-public sealed record TeamMemberRequest(string Role);
