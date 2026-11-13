@@ -13,16 +13,18 @@ namespace DevFlow.API.Controllers;
 /// <summary>
 /// Access tokens are returned in the body (the SPA keeps them in memory only); refresh tokens are set as an
 /// HttpOnly, SameSite=Strict cookie scoped to /api/auth so scripts can never read them.
+/// The strict per-IP "auth" rate limit applies only to credential endpoints (login/register); refresh runs on
+/// every page load and in every tab, so it uses the normal global limit to avoid signing users out.
 /// </summary>
 [Route("api/auth")]
 [AllowAnonymous]
-[EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
 public sealed class AuthController(ISender sender, IRefreshTokenService refreshTokens) : BaseApiController
 {
     public const string RefreshCookieName = "devflow_refresh";
     private const string RefreshCookiePath = "/api/auth";
 
     [HttpPost("register")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct)
     {
@@ -31,6 +33,7 @@ public sealed class AuthController(ISender sender, IRefreshTokenService refreshT
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken ct)
     {
