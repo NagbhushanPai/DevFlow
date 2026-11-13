@@ -129,5 +129,19 @@ public sealed class PermissionAndConcurrencyTests(CustomWebApplicationFactory fa
         Assert.NotEqual(Guid.Empty, organizationId);
     }
 
+    [Fact]
+    public async Task Timestamps_AreSerializedAsUtc()
+    {
+        var owner = await RegisterAsync(factory, "utc");
+        var (_, projectId) = await CreateProjectAsync(owner.Client);
+        var issue = await CreateIssueAsync(owner.Client, projectId);
+
+        var json = await owner.Client.GetStringAsync($"/api/issues/{issue.Id}");
+        var createdAt = System.Text.Json.JsonDocument.Parse(json).RootElement.GetProperty("createdAtUtc").GetString();
+
+        // Without the "Z" browsers interpret the value as local time and show it hours off.
+        Assert.EndsWith("Z", createdAt);
+    }
+
     private sealed record ProjectResponse(Guid Id, string Name, string Key, int? MyRole);
 }
