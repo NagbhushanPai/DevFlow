@@ -19,6 +19,9 @@ public interface IProjectAuthorizationService
 
     Task<ProjectMemberRole?> GetEffectiveRoleAsync(Guid projectId, CancellationToken ct);
 
+    /// <summary>Same as above for an explicit user (e.g. a SignalR connection, where there is no HTTP request scope).</summary>
+    Task<ProjectMemberRole?> GetEffectiveRoleAsync(Guid projectId, Guid userId, CancellationToken ct);
+
     /// <summary>Throws <see cref="ForbiddenAccessException"/> unless the user has at least <paramref name="minimum"/>.</summary>
     Task<ProjectMemberRole> RequireRoleAsync(Guid projectId, ProjectMemberRole minimum, CancellationToken ct);
 }
@@ -28,10 +31,11 @@ public sealed class ProjectAuthorizationService(IApplicationDbContext context, I
 {
     public Guid CurrentUserId => currentUser.UserId ?? throw new UnauthorizedAccessException();
 
-    public async Task<ProjectMemberRole?> GetEffectiveRoleAsync(Guid projectId, CancellationToken ct)
-    {
-        var userId = CurrentUserId;
+    public Task<ProjectMemberRole?> GetEffectiveRoleAsync(Guid projectId, CancellationToken ct) =>
+        GetEffectiveRoleAsync(projectId, CurrentUserId, ct);
 
+    public async Task<ProjectMemberRole?> GetEffectiveRoleAsync(Guid projectId, Guid userId, CancellationToken ct)
+    {
         var projectRole = await context.ProjectMembers
             .Where(member => member.ProjectId == projectId && member.UserId == userId)
             .Select(member => (ProjectMemberRole?)member.Role)
