@@ -21,7 +21,7 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${DEVFLOW_SQL_PASSWORD:?Set DEVFLOW_SQL_PASSWORD in .env}"
     ports:
-      - "127.0.0.1:1433:1433"
+      - "127.0.0.1:${DEVFLOW_SQL_PORT:-1433}:1433"
     volumes:
       - devflow-sql:/var/opt/mssql
     healthcheck:
@@ -36,7 +36,7 @@ services:
     environment:
       REDISCLI_AUTH: "${DEVFLOW_REDIS_PASSWORD}"
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${DEVFLOW_REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -48,7 +48,7 @@ services:
     image: mcr.microsoft.com/azure-storage/azurite:3.34.0
     command: ["azurite-blob", "--blobHost", "0.0.0.0", "--location", "/data", "--skipApiVersionCheck"]
     ports:
-      - "127.0.0.1:10000:10000"
+      - "127.0.0.1:${DEVFLOW_AZURITE_PORT:-10000}:10000"
     volumes:
       - devflow-blobs:/data
 
@@ -78,7 +78,7 @@ services:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
       Cors__AllowedOrigins__0: "http://localhost:4200"
     ports:
-      - "8080:8080"
+      - "${DEVFLOW_API_PORT:-8080}:8080"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -97,7 +97,7 @@ services:
       <<: *backend-env
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
     ports:
-      - "8081:8080"
+      - "${DEVFLOW_ADMIN_PORT:-8081}:8080"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -107,7 +107,7 @@ services:
       context: frontend
       dockerfile: Dockerfile
     ports:
-      - "4200:80"
+      - "${DEVFLOW_WEB_PORT:-4200}:80"
     depends_on:
       api:
         condition: service_healthy
